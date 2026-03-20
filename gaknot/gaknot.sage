@@ -1,9 +1,24 @@
 from sage.all import Integer, gcd
 
 class GeneralizedAlgebraicKnot:
-    """
+    r"""
     Represents a generalized algebraic knot, formed by taking connected sums 
     of iterated positive cables of positive torus knots and their concordance inverses.
+
+    The knot is described using a nested list/tuple structure:
+    `[(sign_1, knot_desc_1), (sign_2, knot_desc_2), ...]`
+
+    1. Top-Level: Connected Sum
+       Each element is a pair `(sign, knot_desc)` representing a summand.
+       - `sign`: 1 for the knot, -1 for its orientation-reversed mirror image (concordance inverse).
+       - `knot_desc`: Description of an iterated torus knot (satellite knot).
+
+    2. Inner Level: Iterated Torus Knot
+       Each `knot_desc` is a list of cabling parameters `(p, q)`:
+       `[(p_1, q_1), (p_2, q_2), ..., (p_n, q_n)]`
+       - Parameters are ordered from the innermost pattern to the outermost companion.
+       - Each pair `(p, q)` represents a torus knot $T(p,q)$ and must satisfy $p, q > 1$ 
+         and $\gcd(p, q) = 1$.
     """
 
     def __init__(self, desc):
