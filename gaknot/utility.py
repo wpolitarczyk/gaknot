@@ -6,7 +6,7 @@ import logging
 import subprocess
 import shutil
 
-from sage.all import ZZ, PolynomialRing
+from sage.all import ZZ, PolynomialRing, floor
 
 def mod_one(n):
     r"""calculates the fractional part of the argument
@@ -23,7 +23,7 @@ def mod_one(n):
         sage: mod_one(-3/4)
         1/4
     """
-    return n - math.floor(n)
+    return n - floor(n)
 
 
 def alexander_polynomial_torus_knot(p, q):

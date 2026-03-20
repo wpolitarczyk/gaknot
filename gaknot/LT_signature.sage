@@ -56,13 +56,14 @@ def LT_signature_torus_knot(p, q):
         # Helper function h_{p,q} based on Litherland's exponent formula
         a_val = a(p, q, x)
         b_val = b(p, q, x)
-        exponent = (math.floor(a_val / q) + 
-                    math.floor(b_val / p) + 
-                    math.floor(a_val / q + b_val / p))
+        exponent = (floor(a_val / q) + 
+                    floor(b_val / p) + 
+                    floor(a_val / q + b_val / p))
         return (-1) ** exponent
 
     # Jump points occur at i/(pq) where p*x and q*x are not integers
-    roots = [i / (p * q) for i in range(1, p * q)]
+    # We use Integer(i) to ensure exact rational division in Sage/Python 3
+    roots = [Integer(i) / (p * q) for i in range(1, p * q)]
     jumps = [x for x in roots if mod_one(p * x) != 0 and mod_one(q * x) != 0]
 
     # Map jumps to their h values to build the signature data
