@@ -103,8 +103,9 @@ def LT_signature_iterated_torus_knot(desc):
 
     Args:
         desc: A list of pairs (p, q) describing the cabling process.
-    """
-              Example: [(2,3), (6,5)] is the (6,5)-cable of T(2,3).
+
+    Example:
+        [(2,3), (6,5)] is the (6,5)-cable of T(2,3).
     """
     
     if not isinstance(desc, (list, tuple)):
