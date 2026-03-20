@@ -108,6 +108,10 @@ def import_sage(module_name, package=None, path=''):
                 
         except subprocess.CalledProcessError as e:
             logging.error(f"Sage preparse failed for {sage_path}: {e}")
+    elif os.path.isfile(module_py_path):
+        logging.info(f"Using already preparsed file: {module_py_path}")
+    else:
+        logging.error(f"Neither {sage_path} nor {module_py_path} found.")
 
     # Standardize the module name for importlib
     full_module_name = f"{package}.{module_name}" if package else module_name

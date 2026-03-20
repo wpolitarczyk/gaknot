@@ -10,3 +10,4 @@ __pycache__/
 /gaknot/main.py
 /pyrightconfig.json
 GEMINI.md
+/experiments/*
