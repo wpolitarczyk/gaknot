@@ -89,11 +89,7 @@ def import_sage(module_name, package=None, path=''):
     python_path = os.path.abspath(os.path.join(path, python_name))
     module_py_path = os.path.abspath(os.path.join(path, module_py_dest))
 
-    # logging.info(f'sage_path = {sage_path}')
-    # logging.info(f'python_path = {python_path}')
-    # logging.info(f'module_py_path = {module_py_path}')
-
-    # logging.info(f'os.path.isfile(sage_path) is {os.path.isfile(sage_path)}')
+    logging.debug(f"Checking for sage file at: {sage_path}")
 
     if os.path.isfile(sage_path):
         try:
