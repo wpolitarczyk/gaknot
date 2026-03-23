@@ -3,11 +3,7 @@
 __pycache__/
 .ipynb_checkpoints
 /.DS_Store
-/gaknot/LT_signature.py
-/gaknot/cable_signature.py
-/gaknot/gaknot.py
-/gaknot/signature.py
-/gaknot/main.py
+/gaknot_lib/*.py
 /pyrightconfig.json
 GEMINI.md
 /experiments/*
