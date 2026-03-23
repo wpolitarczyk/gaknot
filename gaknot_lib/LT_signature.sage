@@ -16,8 +16,8 @@ if __name__ == '__main__':
 else:
     from .utility import import_sage
     package = __name__.rsplit('.', 1)[0]
-    # We use the path of the current file to find siblings
-    path = os.path.dirname(os.path.abspath(__file__))
+    # We use the path of the parent directory because import_sage appends package
+    path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Import signature module and assign to 'sg'.
 sg = import_sage('signature', package=package, path=path)

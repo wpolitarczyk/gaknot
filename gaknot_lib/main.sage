@@ -27,8 +27,9 @@ if __name__ == '__main__':
 
 else:
     from .utility import import_sage
-    package = os.path.join( __name__.split('.')[0])
-    path = '../'
+    package = __name__.split('.')[0]
+    # We use the path of the parent directory because import_sage appends package
+    path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sg = import_sage('signature', package=package, path=path)
 cs = import_sage('cable_signature', package=package, path=path)
 

@@ -22,18 +22,32 @@ It contains the following submodules.
 
 from .utility import import_sage
 import os
+import logging
 
 package = __name__
 current_file_path = os.path.abspath(__file__)
 path = os.path.dirname(os.path.dirname(current_file_path))
 
+logging.debug(f"__init__.py: current_file_path={current_file_path}")
+logging.debug(f"__init__.py: calculated path={path}")
+
+def safe_import(module, package, path):
+    """Import a sage module only if the file exists, avoiding noise."""
+    sage_file = os.path.join(path, package, f"{module}.sage")
+    py_file = os.path.join(path, package, f"{module}.py")
+    logging.debug(f"safe_import: checking for {sage_file}")
+    if os.path.exists(sage_file) or os.path.exists(py_file):
+        return import_sage(module, package=package, path=path)
+    return None
+
 # Ensure these match your filenames (use underscores, not hyphens)
-import_sage('signature', package=package, path=path)
-# import_sage('cable_signature', package=package, path=path)
-# import_sage('main', package=package, path=path)
-import_sage('LT_signature', package=package, path=path)
-import_sage('gaknot', package=package, path=path)
-import_sage('H1_branched_cover', package=package, path=path)
+safe_import('signature', package, path)
+# safe_import('cable_signature', package, path)
+# safe_import('main', package, path)
+safe_import('LT_signature', package, path)
+# Special case for the main gaknot module
+safe_import('gaknot', package, path)
+safe_import('H1_branched_cover', package, path)
 
 # from .main import prove_lemma
 
