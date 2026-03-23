@@ -56,13 +56,14 @@ def LT_signature_torus_knot(p, q):
         # Helper function h_{p,q} based on Litherland's exponent formula
         a_val = a(p, q, x)
         b_val = b(p, q, x)
-        exponent = (math.floor(a_val / q) + 
-                    math.floor(b_val / p) + 
-                    math.floor(a_val / q + b_val / p))
+        exponent = (floor(a_val / q) + 
+                    floor(b_val / p) + 
+                    floor(a_val / q + b_val / p))
         return (-1) ** exponent
 
     # Jump points occur at i/(pq) where p*x and q*x are not integers
-    roots = [i / (p * q) for i in range(1, p * q)]
+    # We use Integer(i) to ensure exact rational division in Sage/Python 3
+    roots = [Integer(i) / (p * q) for i in range(1, p * q)]
     jumps = [x for x in roots if mod_one(p * x) != 0 and mod_one(q * x) != 0]
 
     # Map jumps to their h values to build the signature data
@@ -91,14 +92,21 @@ def reparametrize(sig_func, p):
             
     return sg.SignatureFunction(counter=new_counter)
 
-
 def LT_signature_iterated_torus_knot(desc):
-    """
-    Computes the Levine-Tristram signature for an iterated torus knot.
-    
-    Arguments:
+    r"""
+    Computes the Levine-Tristram signature function of an iterated torus knot.
+
+    The knot is described by a list of cabling parameters `(p, q)`:
+    `[(p_1, q_1), (p_2, q_2), ..., (p_n, q_n)]`
+    - Parameters are ordered from the innermost pattern to the outermost companion.
+    - Each pair `(p, q)` represents a torus knot $T(p,q)$ and must satisfy $p, q > 1$ 
+      and $\gcd(p, q) = 1$.
+
+    Args:
         desc: A list of pairs (p, q) describing the cabling process.
-              Example: [(2,3), (6,5)] is the (6,5)-cable of T(2,3).
+
+    Example:
+        [(2,3), (6,5)] is the (6,5)-cable of T(2,3).
     """
     
     if not isinstance(desc, (list, tuple)):
@@ -136,18 +144,18 @@ def LT_signature_generalized_algebraic_knot(desc):
     """
     Computes the Levine-Tristram signature of a generalized algebraic knot.
     
-    A generalized algebraic knot is a connected sum of positive iterated torus knots 
-    or their concordance inverses.
-    
-    Arguments:
-        desc: A list (or tuple) of pairs, where each pair is (sign, knot_description).
-              - sign: 1 (for the knot itself) or -1 (for its inverse).
-              - knot_description: A list of (p, q) pairs valid for 
-                                  LT_signature_iterated_torus_knot.
-    
-    Example:
-        # Represents T(2,3) # -T(2,5) (connected sum of T(2,3) and inverse of T(2,5))
-        desc = [ (1, [(2,3)]), (-1, [(2,5)]) ]
+    The knot is described using a nested list/tuple structure:
+    `[(sign_1, knot_desc_1), (sign_2, knot_desc_2), ...]`
+
+    1. Top-Level: Connected Sum
+       Each element is a pair `(sign, knot_desc)` representing a summand.
+       - `sign`: 1 for the knot, -1 for its orientation-reversed mirror image.
+       - `knot_desc`: Description of an iterated torus knot (satellite knot).
+
+    2. Inner Level: Iterated Torus Knot
+       Each `knot_desc` is a list of cabling parameters `(p, q)`:
+       `[(p_1, q_1), (p_2, q_2), ..., (p_n, q_n)]`
+       - Parameters are ordered from the innermost pattern to the outermost companion.
     """
     
     # 1. Validate the top-level container

@@ -3,8 +3,11 @@ from sage.all import Integer, ZZ, PolynomialRing, matrix, gcd
 class BranchedCoverHomology:
     """
     Represents the first homology group of an N-fold branched cover of a knot.
-    Preserves the structural decomposition of the group corresponding to the 
-    knot's connected sum components AND their internal satellite layers.
+    
+    The group structure mirrors the knot's hierarchical decomposition:
+    1. Top-Level: Connected sum components (Summands).
+    2. Mid-Level: Satellite layers within each summand (Companion -> Pattern).
+    3. Low-Level: Individual generators and their moduli.
     """
     def __init__(self, knot, cover_degree, decomposition=None):
         """

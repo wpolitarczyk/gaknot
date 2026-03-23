@@ -24,11 +24,6 @@ if ip:
     except ImportError:
         pass # Handle case where extension isn't installed
 
-    try:
-        ip.run_line_magic('load_ext', 'ipytest')
-    except Exception:
-        pass # ipytest might not be installable as an extension in all versions
-
     # Display full output
     InteractiveShell.ast_node_interactivity = 'all'
 

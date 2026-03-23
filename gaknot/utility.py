@@ -6,7 +6,7 @@ import logging
 import subprocess
 import shutil
 
-from sage.all import ZZ, PolynomialRing
+from sage.all import ZZ, PolynomialRing, floor
 
 def mod_one(n):
     r"""calculates the fractional part of the argument
@@ -23,7 +23,7 @@ def mod_one(n):
         sage: mod_one(-3/4)
         1/4
     """
-    return n - math.floor(n)
+    return n - floor(n)
 
 
 def alexander_polynomial_torus_knot(p, q):
@@ -108,6 +108,10 @@ def import_sage(module_name, package=None, path=''):
                 
         except subprocess.CalledProcessError as e:
             logging.error(f"Sage preparse failed for {sage_path}: {e}")
+    elif os.path.isfile(module_py_path):
+        logging.info(f"Using already preparsed file: {module_py_path}")
+    else:
+        logging.error(f"Neither {sage_path} nor {module_py_path} found.")
 
     # Standardize the module name for importlib
     full_module_name = f"{package}.{module_name}" if package else module_name
