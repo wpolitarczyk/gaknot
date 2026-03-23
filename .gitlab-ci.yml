@@ -3,6 +3,6 @@ variables:
 
 test_notebooks:
   script:
-    - zsh -l -c "source ~/.zshrc && load_conda && conda activate sage_env && pip install nbmake ipytest && cd gaknot && python3 clean.py && for f in *.sage; do sage --preparse \$f && mv \$f.py \${f%.sage}.py; done && cd .. && pytest --nbmake notebooks/*.ipynb --nbmake-kernel=sagemath"
+    - zsh -l -c "source ~/.zshrc && load_conda && conda activate sage_env && pip install nbmake ipytest && cd gaknot_lib && python3 clean.py && for f in *.sage; do sage --preparse \$f && mv \$f.py \${f%.sage}.py; done && cd .. && pytest --nbmake notebooks/*.ipynb --nbmake-kernel=sagemath"
   only:
     - master

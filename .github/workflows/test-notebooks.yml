@@ -26,7 +26,7 @@ jobs:
 
       - name: Preparse Sage files
         run: |
-          cd gaknot
+          cd gaknot_lib
           for f in *.sage; do
             sage --preparse "$f"
             mv "$f.py" "${f%.sage}.py"
