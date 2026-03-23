@@ -5,6 +5,14 @@ from IPython import get_ipython
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.core.magic import register_line_magic
 
+# 1. Setup Path (Relative to this file)
+# Since this file is in gaknot_lib/, the module_path is its parent
+lib_dir = os.path.dirname(os.path.abspath(__file__))
+module_path = os.path.dirname(lib_dir)
+
+if module_path not in sys.path:
+    sys.path.append(module_path)
+
 # Configure Logging IMMEDIATELY so we see logs from imports
 def setup_logging(level=logging.INFO):
     """
@@ -20,11 +28,6 @@ def setup_logging(level=logging.INFO):
     )
 
 setup_logging()
-
-# 1. Setup Path
-module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
 
 # 2. Configure IPython Environment
 ip = get_ipython()
@@ -49,10 +52,14 @@ if ip:
 
 # 3. Define and Register Custom Magic
 try:
-    from gaknot_lib.utility import import_sage
+    from .utility import import_sage
 except ImportError:
-    print("Warning: Could not import 'gaknot_lib.utility'. Check your path.")
-    import_sage = None
+    # If the user has already manipulated sys.path, or if this is imported as a package
+    try:
+        from gaknot_lib.utility import import_sage
+    except ImportError:
+        print("Warning: Could not import 'gaknot_lib.utility'. Check your path.")
+        import_sage = None
 
 @register_line_magic
 def preparse(line):
@@ -65,20 +72,21 @@ def preparse(line):
         return
 
     package_name = 'gaknot_lib'
-    module_to_preparse = line.strip()
-
-    # Special handling for the main package entry point (gaknot.sage)
-    if module_to_preparse == package_name or module_to_preparse == 'gaknot':
-        module_to_preparse = 'gaknot'
     
-    # All files inside gaknot_lib should be imported with package='gaknot_lib' 
-    # and path set to the project root.
-    actual_package = package_name
-    actual_path = module_path
+    # If the user is trying to preparse the main package itself (gaknot.sage)
+    if line.strip() == package_name:
+        module_to_preparse = package_name
+        actual_package = None
+        # The file gaknot.sage is INSIDE the gaknot_lib/ directory
+        actual_path = os.path.join(module_path, package_name)
+    else:
+        module_to_preparse = line.strip()
+        actual_package = package_name
+        actual_path = module_path
 
     try:
         import_sage(module_to_preparse, package=actual_package, path=actual_path)
-        print(f"Successfully preparsed and reloaded: {module_to_preparse}")
+        print(f"Successfully preparsed and reloaded: {line}")
     except Exception as e:
         print(f"Error during preparse: {e}")
 
