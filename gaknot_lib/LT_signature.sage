@@ -77,93 +77,77 @@ def reparametrize(sig_func, p):
             
     return sg.SignatureFunction(counter=new_counter)
 
-def LT_signature_iterated_torus_knot(desc):
+def LT_signature_iterated_torus_knot_counter(desc):
     r"""
-    Computes the Levine-Tristram signature function of an iterated torus knot.
-    Optimized to compute all jumps in a single pass into a single Counter.
-
-    The knot is described by a list of cabling parameters `(p, q)`:
-    `[(p_1, q_1), (p_2, q_2), ..., (p_n, q_n)]`
-    - Parameters are ordered from the innermost pattern to the outermost companion.
+    Helper function that returns a Counter of jumps instead of a SignatureFunction.
     """
-    
     if not isinstance(desc, (list, tuple)):
         raise TypeError('The variable desc should be a list or tuple.')
 
     from sage.all import inverse_mod, floor
     total_counter = Counter()
-    
-    # The signature of an iterated knot K = [(p1, q1), ..., (pn, qn)] is:
-    # sigma_K(t) = sigma_T(p1,q1)(p2*...*pn*t) + sigma_T(p2,q2)(p3*...*pn*t) + ... + sigma_T(pn,qn)(t)
-    
-    # We track the product of p_i values of the "outer" layers.
     current_p_prod = 1
-    
-    # Iterate backwards from companion (outermost) to pattern (innermost)
+
     for i in range(len(desc) - 1, -1, -1):
         p, q = desc[i]
-        
-        # 1. Calculate jumps for the current torus knot T(p,q)
         p_inv_q = inverse_mod(p, q)
-        
+
         for j in range(1, p * q):
             if j % p != 0 and j % q != 0:
                 a_val = (j * p_inv_q) % q
                 b_val = (j - a_val * p) // q
                 val = (-1) ** (floor(b_val / p) + floor(a_val / q + b_val / p))
-                
-                # 2. Reparametrize the jump: if T(p,q) jumps at x = j/(pq),
-                # then T(p,q)(current_p_prod * t) jumps at (x + k) / current_p_prod for k=0..current_p_prod-1
+
                 base_jump = Integer(j) / (p * q)
                 if current_p_prod == 1:
                     total_counter[base_jump] += val
                 else:
                     for k in range(current_p_prod):
                         total_counter[(base_jump + k) / current_p_prod] += val
-        
-        # Update current_p_prod for the next (inner) layer
+
         current_p_prod *= p
-            
-    return sg.SignatureFunction(counter=total_counter)
 
+    return total_counter
 
+def LT_signature_iterated_torus_knot(desc):
+    r"""
+    Computes the Levine-Tristram signature function of an iterated torus knot.
+    """
+    counter = LT_signature_iterated_torus_knot_counter(desc)
+    return sg.SignatureFunction(counter=counter)
 
 def LT_signature_generalized_algebraic_knot(desc):
     """
     Computes the Levine-Tristram signature of a generalized algebraic knot.
-    Optimized to accumulate all jumps into a single Counter.
+    Optimized to accumulate all jumps into a single Counter before creating a SignatureFunction.
     """
-    
-    # 1. Validate the top-level container
+
     if not isinstance(desc, (list, tuple)):
         raise TypeError(f'The variable desc should be a list or tuple.')
 
-    # 2. Accumulate jumps into a single Counter
     total_counter = Counter()
 
     for i, element in enumerate(desc):
         if not isinstance(element, (list, tuple)) or len(element) != 2:
             raise ValueError(f'Element at index {i} must be a pair (sign, knot_description).')
-        
+
         sign, knot_desc = element
 
         if sign != 1 and sign != -1:
             raise ValueError(f'Sign at index {i} must be 1 or -1.')
 
         try:
-            # We compute the signature of the component.
-            # To be even more efficient, we could have a version of 
-            # LT_signature_iterated_torus_knot that returns a Counter.
-            component_sig = LT_signature_iterated_torus_knot(knot_desc)
-            component_counter = component_sig.jumps_counter
-            
+            # Directly get the counter to avoid redundant SignatureFunction creation
+            component_counter = LT_signature_iterated_torus_knot_counter(knot_desc)
+
             if sign == 1:
                 total_counter.update(component_counter)
             else:
                 total_counter.subtract(component_counter)
-                
+
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid knot description at index {i}: {e}")
 
     return sg.SignatureFunction(counter=total_counter)
+
 
