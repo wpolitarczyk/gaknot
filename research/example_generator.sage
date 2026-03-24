@@ -1,4 +1,5 @@
 import random, sympy
+from sage.all import factor, gcd
 
 ''' Helper function. Returns + or - 1 '''
 def random_sign():
@@ -19,7 +20,7 @@ def gen_coprime(p, ratio=2):
 ''' Helper function. Generates coprime pair (p<q) '''
 
 def gen_pair(size=100, ratio =10):
-    p = random.randint(1,size)
+    p = random.randint(2,size)
     q = gen_coprime(p,ratio)
     return (p,q)
 
@@ -32,9 +33,20 @@ def refactor(n, l):
         for i in range(x[1]):
             factors.append(x[0])
     random.shuffle(factors)
-    partitions = random.sample(range(len(factors)-2), k=l-1)
+    # Ensure we don't sample more than available, and handle small n
+    k_val = max(0, l - 1)
+    pop_size = max(0, len(factors) - 1)
+    if k_val > pop_size:
+        # If we need more factors than we have, we just take all of them as single partitions
+        # This is a fallback for small n
+        partitions = list(range(pop_size))
+    else:
+        partitions = random.sample(range(pop_size), k=k_val)
+    
     partitions.sort()
-    partitions.append(len(factors)-1)
+    # Ensure the last element is the end of the list
+    if not partitions or partitions[-1] != len(factors) - 1:
+        partitions.append(len(factors) - 1)
     #print(partitions)
     result = []
     new_p = 1
@@ -51,10 +63,10 @@ def refactor(n, l):
 
 ''' Generates a random iterated torus knot of given length. with_sign adds the +1 sign and outputs the knot in the GA format '''
 
-def gen_iterated(size=10, with_sign=False):
+def gen_iterated(size=10, with_sign=False, size_range=100):
     k = []
     for i in range(size):
-       k.append(gen_pair())
+       k.append(gen_pair(size=size_range))
     
     if with_sign:
         return [(1, k)]
