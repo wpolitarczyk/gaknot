@@ -1,8 +1,11 @@
 #!/usr/bin/env sage -python
 
 import sys
-# import os
+import math
+from copy import copy
 from collections import Counter
+from bisect import bisect_left
+import itertools
 import matplotlib.pyplot as plt
 import inspect
 from PIL import Image
@@ -54,10 +57,18 @@ class SignatureFunction:
                 msg = "Signature function is defined on the interval [0, 1)."
                 raise ValueError(msg)
 
-        counter[0] += 0
-        counter[1] += 0
+        # 0 and 1 are special jump locations, but signature function
+        # is only on [0, 1). So we only keep those if they are non-zero
+        # or if we need them for sorting logic.
+        # Actually, let's just use what we have in counter.
         self.jumps_counter = counter
         self.plot_title = plot_title
+        
+        # Pre-compute for faster evaluation in __call__
+        self._sorted_keys = sorted(self.jumps_counter.keys())
+        self._cumulative_sums = list(itertools.accumulate(
+            [self.jumps_counter[k] for k in self._sorted_keys], 
+            initial=0))
 
     def __rshift__(self, shift):
         # A shift of the signature functions corresponds to the rotation.
@@ -110,11 +121,18 @@ class SignatureFunction:
         return result[:-2] + "."
 
     def __call__(self, arg):
-        # return the value of the signature function at the point arg, i.e.
-        # sum of all signature jumps that occur before arg
-        items = self.jumps_counter.items()
-        result = [jump for jump_arg, jump in items if jump_arg < mod_one(arg)]
-        return 2 * sum(result) + self.jumps_counter[arg]
+        """
+        Evaluate the signature function at the point arg.
+        Optimized to O(log N) using binary search.
+        """
+        x = mod_one(arg)
+        idx = bisect_left(self._sorted_keys, x)
+        
+        # The value is 2 * (sum of jumps before x) + (jump at x if any)
+        # sum_before is prefix_sums[idx] because prefix_sums[0] is 0
+        sum_before = self._cumulative_sums[idx]
+        
+        return 2 * sum_before + self.jumps_counter[x]
 
     def double_cover(self):
         # to read values for t^2
