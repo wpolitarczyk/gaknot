@@ -34,4 +34,4 @@ jobs:
 
       - name: Run Tests in Notebooks
         run: |
-          sage -python -m pytest --nbmake notebooks/*.ipynb --nbmake-kernel=sagemath
+          sage -python -m pytest --nbmake test/*.ipynb --nbmake-kernel=sagemath

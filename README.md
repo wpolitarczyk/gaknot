@@ -12,7 +12,7 @@ It was created as part of the proof for the main lemma from the paper **"On the 
 The project is organized as follows:
 
 * **`gaknot/`**: Contains the source code (SageMath and Python files). This is the main package directory.
-* **`notebooks/`**: Contains Jupyter notebooks for testing and reproducing calculations using `ipytest`:
+* **`test/`**: Contains Jupyter notebooks for testing and reproducing calculations using `ipytest`:
   * `lemma.ipynb`: Core calculations for the proof of Lemma 3.2.
   * `LT-signature-test.ipynb`: Tests for the core Levine-Tristram signature module.
   * `gaknot-test.ipynb`: Tests and usage examples for the `GeneralizedAlgebraicKnot` class.
@@ -179,4 +179,4 @@ The project uses `ipytest` within Jupyter notebooks for testing. To run tests, o
 
 
 ## Documentation
-For a more detailed description of the classes, validation rules, and internal logic, please refer to the docstrings within the `gaknot` package files or explore the `notebooks/` directory.
+For a more detailed description of the classes, validation rules, and internal logic, please refer to the docstrings within the `gaknot` package files or explore the `test/` directory.
