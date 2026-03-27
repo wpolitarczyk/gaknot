@@ -1,6 +1,6 @@
 # Generalized Algebraic Knot Invariants
 
-[![CI Tests](https://github.com/wpolitarczyk/gaknot/actions/workflows/test-package.yml/badge.svg)](https://github.com/wpolitarczyk/gaknot/actions/workflows/test-package.yml)
+[![CI Tests](https://github.com/wpolitarczyk/signature-function/actions/workflows/test-package.yml/badge.svg)](https://github.com/wpolitarczyk/signature-function/actions/workflows/test-package.yml)
 [![pipeline status](https://gitlab.mimuw.edu.pl/wpolitarczyk/signature-function/badges/master/pipeline.svg)](https://gitlab.mimuw.edu.pl/wpolitarczyk/signature-function/-/commits/master)
 
 This project allows calculating signature invariants for generalized algebraic knots (`GA-knots`).
