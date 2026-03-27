@@ -13,16 +13,16 @@ check_env:
 		exit 1; \
 	fi
 
-# Run all Jupyter notebooks in the directory
+# Run all Jupyter notebooks in the notebooks/ subdirectory
 test_all: check_env
-	$(PYTEST) --nbmake *.ipynb
+	$(PYTEST) --nbmake notebooks/*.ipynb
 
 # Run specific notebooks provided via the FILES variable
-# Example: make test FILES="character-test.ipynb"
+# Example: make test FILES="notebooks/character-test.ipynb"
 test: check_env
 	@if [ -z "$(FILES)" ]; then \
 		echo "Error: Please specify files using the FILES variable."; \
-		echo "Example: make test FILES=\"character-test.ipynb\""; \
+		echo "Example: make test FILES=\"notebooks/character-test.ipynb\""; \
 		exit 1; \
 	fi
 	$(PYTEST) --nbmake $(FILES)

@@ -26,7 +26,7 @@ jobs:
 
       - name: Preparse Sage files
         run: |
-          cd gaknot
+          cd src/gaknot
           for f in *.sage; do
             sage --preparse "$f"
             mv "$f.py" "${f%.sage}.py"
@@ -34,4 +34,6 @@ jobs:
 
       - name: Run Tests in Notebooks
         run: |
-          sage -python -m pytest --nbmake test/*.ipynb --nbmake-kernel=sagemath
+          # Add src to PYTHONPATH so the tests can find 'gaknot'
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+          sage -python -m pytest --nbmake tests/notebooks/*.ipynb --nbmake-kernel=sagemath
