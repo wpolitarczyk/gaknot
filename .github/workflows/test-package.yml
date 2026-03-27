@@ -1,0 +1,35 @@
+name: CI Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: sagemath/sagemath:latest
+      options: --user root
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Testing Dependencies
+        run: |
+          sage -pip install pytest
+
+      - name: Build Package (Preparse Sage files)
+        run: |
+          # The Makefile uses 'sage --preparse'
+          # We need to ensure 'sage' is in the PATH or use 'sage -python' in the Makefile
+          # The current Makefile uses 'sage --preparse', which should work in the container
+          make build
+
+      - name: Run Tests
+        run: |
+          # We use the Makefile to ensure PYTHONPATH is set correctly
+          make test
