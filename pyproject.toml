@@ -19,9 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "ipytest",
     "pytest",
-    "nbmake",
 ]
 
 [project.urls]
@@ -33,4 +31,3 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--nbmake"

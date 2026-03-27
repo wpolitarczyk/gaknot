@@ -20,6 +20,7 @@ jobs:
 
       - name: Install Testing Dependencies
         run: |
+          apt-get update -qq && apt-get install -y -qq make
           sage -pip install pytest
 
       - name: Build Package (Preparse Sage files)
