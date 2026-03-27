@@ -26,11 +26,13 @@ jobs:
 
       - name: Preparse Sage files
         run: |
-          cd src/gaknot
-          for f in *.sage; do
-            sage --preparse "$f"
-            mv "$f.py" "${f%.sage}.py"
-          done
+          # Core
+          cd src/gaknot/core
+          for f in *.sage; do sage --preparse "$f" && mv "$f.py" "${f%.sage}.py"; done
+          
+          # Invariants
+          cd ../invariants
+          for f in *.sage; do sage --preparse "$f" && mv "$f.py" "${f%.sage}.py"; done
 
       - name: Run Tests in Notebooks
         run: |

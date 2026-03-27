@@ -3,7 +3,10 @@
 __pycache__/
 .ipynb_checkpoints
 /.DS_Store
-/src/gaknot/*.py
+/src/gaknot/**/*.py
+!/src/gaknot/**/__init__.py
+!/src/gaknot/utils/utility.py
+!/src/gaknot/utils/clean.py
 /pyrightconfig.json
 GEMINI.md
 /experiments/*

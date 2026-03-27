@@ -9,4 +9,4 @@ import os
 # then we add 'src'
 module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'src'))
 if module_path not in sys.path:
-    sys.path.append(module_path)
+    sys.path.insert(0, module_path)

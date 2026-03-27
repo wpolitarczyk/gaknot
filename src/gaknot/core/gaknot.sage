@@ -88,11 +88,8 @@ class GeneralizedAlgebraicKnot:
         Computes the Levine-Tristram signature function of this generalized algebraic knot.
         Returns a SignatureFunction object.
         """
-        # Local import to prevent circular dependencies during package initialization
-        from .LT_signature import LT_signature_generalized_algebraic_knot
-        
+        from gaknot.invariants.LT_signature import LT_signature_generalized_algebraic_knot
         return LT_signature_generalized_algebraic_knot(self.description)
-
 
     def alexander_polynomial(self):
         """
@@ -100,8 +97,7 @@ class GeneralizedAlgebraicKnot:
         The polynomial of a connected sum is the product of the polynomials of its summands.
         """
         from sage.all import PolynomialRing, ZZ
-        # Local import of the helper function if it is in another file
-        from .utility import alexander_polynomial_iterated_knot
+        from gaknot.utils.utility import alexander_polynomial_iterated_knot
         
         R = PolynomialRing(ZZ, 't')
         total_poly = R(1)

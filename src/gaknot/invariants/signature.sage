@@ -11,7 +11,7 @@ import inspect
 from PIL import Image
 from pathlib import Path
 import warnings
-from .utility import mod_one
+from gaknot.utils.utility import mod_one
 
 
 # check if used in Jupyter Notebook to show plots in proper way

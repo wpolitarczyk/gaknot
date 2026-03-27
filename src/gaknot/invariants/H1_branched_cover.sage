@@ -68,7 +68,7 @@ class BranchedCoverHomology:
     @staticmethod
     def _from_torus_knot(p, q, N):
         """Helper to compute invariant factors for T(p,q)."""
-        from .utility import alexander_polynomial_torus_knot
+        from gaknot.utils.utility import alexander_polynomial_torus_knot
         if N == 1:
             return []
             

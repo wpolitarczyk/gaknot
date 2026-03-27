@@ -4,24 +4,10 @@ import math
 import os
 from collections import Counter
 
-from .utility import mod_one
+from gaknot.utils.utility import mod_one
+from gaknot.invariants.signature import SignatureFunction
 
-from sage.all import Integer, gcd
-
-# Internal import logic to handle package context
-if __name__ == '__main__':
-    from utility import import_sage
-    package = None
-    path = ''
-else:
-    from .utility import import_sage
-    package = __name__.rsplit('.', 1)[0]
-    # We use the path of the parent directory because import_sage appends package
-    path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Import signature module and assign to 'sg'.
-sg = import_sage('signature', package=package, path=path)
-
+from sage.all import Integer, gcd, inverse_mod, floor
 
 def LT_signature_torus_knot(p, q):
     """
@@ -38,7 +24,6 @@ def LT_signature_torus_knot(p, q):
     if math.gcd(p, q) != 1:
         raise ValueError(f'Parameteres p and q must be relatively prime.')
 
-    from sage.all import inverse_mod, floor
     p_inv_q = inverse_mod(p, q)
     
     counter = Counter()
@@ -58,7 +43,7 @@ def LT_signature_torus_knot(p, q):
             exponent = floor(b_val / p) + floor(a_val / q + b_val / p)
             counter[Integer(i) / (p * q)] = (-1) ** exponent
 
-    return sg.SignatureFunction(counter=counter)
+    return SignatureFunction(counter=counter)
 
 
 def reparametrize(sig_func, p):
@@ -75,7 +60,7 @@ def reparametrize(sig_func, p):
             new_x = (x + k) / p
             new_counter[new_x] += jump_val
             
-    return sg.SignatureFunction(counter=new_counter)
+    return SignatureFunction(counter=new_counter)
 
 def LT_signature_iterated_torus_knot_counter(desc):
     r"""
@@ -84,7 +69,6 @@ def LT_signature_iterated_torus_knot_counter(desc):
     if not isinstance(desc, (list, tuple)):
         raise TypeError('The variable desc should be a list or tuple.')
 
-    from sage.all import inverse_mod, floor
     total_counter = Counter()
     current_p_prod = 1
 
@@ -114,7 +98,7 @@ def LT_signature_iterated_torus_knot(desc):
     Computes the Levine-Tristram signature function of an iterated torus knot.
     """
     counter = LT_signature_iterated_torus_knot_counter(desc)
-    return sg.SignatureFunction(counter=counter)
+    return SignatureFunction(counter=counter)
 
 def LT_signature_generalized_algebraic_knot(desc):
     """
@@ -148,6 +132,6 @@ def LT_signature_generalized_algebraic_knot(desc):
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid knot description at index {i}: {e}")
 
-    return sg.SignatureFunction(counter=total_counter)
+    return SignatureFunction(counter=total_counter)
 
 
