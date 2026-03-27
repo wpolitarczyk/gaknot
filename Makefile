@@ -12,8 +12,8 @@ PY_FILES := $(patsubst %.sage,%.py,$(SAGE_FILES))
 
 # Check if the correct conda environment is active
 check_env:
-	@if [ "$$GITHUB_ACTIONS" == "true" ]; then \
-		echo "Running in GitHub Actions, bypassing environment check."; \
+	@if [ "$$GITHUB_ACTIONS" == "true" ] || [ "$$GITLAB_CI" == "true" ]; then \
+		echo "Running in CI environment, bypassing environment check."; \
 	elif [ "$$CONDA_DEFAULT_ENV" != "sage_env" ]; then \
 		echo "Error: 'sage_env' is not active."; \
 		echo "Please run: conda activate sage_env"; \

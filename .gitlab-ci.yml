@@ -1,8 +1,8 @@
 variables:
   MPLBACKEND: "Agg"
 
-test_notebooks:
+test_package:
   script:
-    - zsh -l -c "source ~/.zshrc && load_conda && conda activate sage_env && pip install nbmake ipytest && cd gaknot_lib && python3 clean.py && for f in *.sage; do sage --preparse \$f && mv \$f.py \${f%.sage}.py; done && cd .. && pytest --nbmake test/*.ipynb --nbmake-kernel=sagemath"
+    - zsh -l -c "source ~/.zshrc && load_conda && conda activate sage_env && sage -pip install pytest && make test"
   only:
     - master
