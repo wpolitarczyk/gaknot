@@ -6,7 +6,7 @@ from IPython.core.interactiveshell import InteractiveShell
 from IPython.core.magic import register_line_magic
 
 # 1. Setup Path (Relative to this file)
-# Since this file is in gaknot_lib/, the module_path is its parent
+# Since this file is in gaknot/, the module_path is its parent
 lib_dir = os.path.dirname(os.path.abspath(__file__))
 module_path = os.path.dirname(lib_dir)
 
@@ -18,7 +18,7 @@ def setup_logging(level=logging.INFO):
     """
     Configures logging for the notebook.
     Change level to logging.DEBUG to see more detailed path resolution 
-    and preparse information from the gaknot_lib package.
+    and preparse information from the gaknot package.
     """
     logging.basicConfig(
         level=level,
@@ -56,28 +56,28 @@ try:
 except ImportError:
     # If the user has already manipulated sys.path, or if this is imported as a package
     try:
-        from gaknot_lib.utility import import_sage
+        from gaknot.utility import import_sage
     except ImportError:
-        print("Warning: Could not import 'gaknot_lib.utility'. Check your path.")
+        print("Warning: Could not import 'gaknot.utility'. Check your path.")
         import_sage = None
 
 @register_line_magic
 def preparse(line):
     """
-    Custom magic to preparse a sage file using the gaknot_lib utility logic.
+    Custom magic to preparse a sage file using the gaknot utility logic.
     Usage: %preparse signature
     """
     if import_sage is None:
         print("Error: import_sage function not available.")
         return
 
-    package_name = 'gaknot_lib'
+    package_name = 'gaknot'
     
     # If the user is trying to preparse the main package itself (gaknot.sage)
     if line.strip() == package_name:
         module_to_preparse = package_name
         actual_package = None
-        # The file gaknot.sage is INSIDE the gaknot_lib/ directory
+        # The file gaknot.sage is INSIDE the gaknot/ directory
         actual_path = os.path.join(module_path, package_name)
     else:
         module_to_preparse = line.strip()
