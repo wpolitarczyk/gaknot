@@ -334,6 +334,15 @@ class BranchedCoverHomologyElement:
         """Returns the flattened list of values."""
         return self._values
 
+    @property
+    def is_torsion(self):
+        """Returns True if the element is a torsion element."""
+        factors = self._homology.all_invariant_factors
+        for v, f in zip(self._values, factors):
+            if f == 0 and v != 0:
+                return False
+        return True
+
     def __add__(self, other):
         if not isinstance(other, BranchedCoverHomologyElement):
             raise TypeError("Can only add another BranchedCoverHomologyElement.")

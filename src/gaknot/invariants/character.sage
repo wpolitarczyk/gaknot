@@ -87,6 +87,14 @@ class Character:
                                     f"Invalid value in Comp {c_idx}, Layer {l_idx}. "
                                     f"Value {rational_val} is not compatible with Z/{modulus}Z."
                                 )
+                        else:
+                            # Torsion-free part (modulus 0)
+                            # Characters must be 0 on torsion-free parts to be defined only on the torsion part
+                            if rational_val != 0:
+                                raise ValueError(
+                                    f"Invalid value in Comp {c_idx}, Layer {l_idx}. "
+                                    f"Characters must be zero on the torsion-free part (modulus 0). Got {rational_val}."
+                                )
 
                         # Normalize and Store
                         normalized_val = rational_val - rational_val.floor()
@@ -152,6 +160,9 @@ class Character:
         if element.homology != self._homology:
             raise ValueError("Character and element must belong to the same homology group.")
             
+        if not element.is_torsion:
+             raise ValueError("Character evaluation is only defined for torsion elements.")
+
         res = 0
         for chi_i, g_i in zip(self._values, element.values):
             res += chi_i * g_i
