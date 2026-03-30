@@ -141,5 +141,22 @@ class Character:
         """Returns the flattened list of normalized values."""
         return self._values
 
+    def __call__(self, element):
+        """
+        Evaluates the character on a BranchedCoverHomologyElement.
+        Returns a rational in [0, 1).
+        """
+        if type(element).__name__ != 'BranchedCoverHomologyElement':
+            raise TypeError(f"Expected a BranchedCoverHomologyElement, got {type(element)}.")
+            
+        if element.homology != self._homology:
+            raise ValueError("Character and element must belong to the same homology group.")
+            
+        res = 0
+        for chi_i, g_i in zip(self._values, element.values):
+            res += chi_i * g_i
+            
+        return res - res.floor()
+
     def __repr__(self):
         return f"Character(values={self._values})"
