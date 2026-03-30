@@ -139,3 +139,43 @@ def test_gaknot_type_verification_parametric(desc, expected_results):
     assert knot.is_positive_torus_knot() == expected_results['pos']
     assert knot.is_negative_torus_knot() == expected_results['neg']
     assert knot.is_iterated_torus_knot() == expected_results['it']
+
+@pytest.mark.parametrize("p, q, sign, expected_str", [
+    (2, 3, 1, "T(2,3)"),
+    (2, 5, -1, "-T(2,5)"),
+    (3, 4, 1, "T(3,4)"),
+    (3, 5, -1, "-T(3,5)"),
+])
+def test_torus_knot_classmethod(p, q, sign, expected_str):
+    knot = GeneralizedAlgebraicKnot.torus_knot(p, q, sign)
+    assert str(knot) == expected_str
+
+@pytest.mark.parametrize("sequence, sign, expected_str", [
+    ([(2, 3), (2, 5)], 1, "T(2,3; 2,5)"),
+    ([(2, 5), (2, 3)], -1, "-T(2,5; 2,3)"),
+    ([(2, 3), (2, 5), (2, 7)], 1, "T(2,3; 2,5; 2,7)"),
+    ([(2, 7), (2, 5), (2, 3)], -1, "-T(2,7; 2,5; 2,3)"),
+])
+def test_iterated_torus_knot_classmethod(sequence, sign, expected_str):
+    knot = GeneralizedAlgebraicKnot.iterated_torus_knot(sequence, sign)
+    assert str(knot) == expected_str
+
+@pytest.mark.parametrize("base_knot, p, q, expected_str", [
+    (GeneralizedAlgebraicKnot.torus_knot(2, 3), 2, 5, "T(2,3; 2,5)"),
+    (GeneralizedAlgebraicKnot.iterated_torus_knot([(2, 3), (2, 5)]), 2, 7, "T(2,3; 2,5; 2,7)"),
+    (GeneralizedAlgebraicKnot.torus_knot(2, 5, sign=-1), 2, 3, "-T(2,5; 2,3)"),
+    (GeneralizedAlgebraicKnot.iterated_torus_knot([(2, 3), (2, 5), (2, 7)], sign=-1), 3, 2, "-T(2,3; 2,5; 2,7; 3,2)"),
+])
+def test_cable_operation(base_knot, p, q, expected_str):
+    cabled = base_knot.cable(p, q)
+    assert str(cabled) == expected_str
+
+def test_cable_restriction():
+    # Test that cabling fails on connected sums
+    sum_knot = GeneralizedAlgebraicKnot.torus_knot(2, 3) + GeneralizedAlgebraicKnot.torus_knot(2, 5)
+    with pytest.raises(ValueError, match="Cabling is only supported for iterated torus knots"):
+        sum_knot.cable(2, 7)
+    
+    # Test that cabling works on single summand (even if complex)
+    it_knot = GeneralizedAlgebraicKnot.iterated_torus_knot([(2, 3), (2, 5)])
+    assert str(it_knot.cable(2, 7)) == "T(2,3; 2,5; 2,7)"

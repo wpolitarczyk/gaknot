@@ -82,6 +82,33 @@ class GeneralizedAlgebraicKnot:
         """Read-only access to the knot description."""
         return self._desc
 
+    @classmethod
+    def torus_knot(cls, p, q, sign=1):
+        """
+        Quickly constructs a single torus knot T(p,q).
+        """
+        return cls([(sign, [(p, q)])])
+
+    @classmethod
+    def iterated_torus_knot(cls, cable_sequence, sign=1):
+        """
+        Quickly constructs an iterated torus knot from a sequence of cabling parameters.
+        cable_sequence: [(p1, q1), (p2, q2), ...] from innermost to outermost.
+        """
+        return cls([(sign, list(cable_sequence))])
+
+    def cable(self, p, q):
+        """
+        Applies a (p, q)-cabling operation to the knot.
+        This operation is only well-defined in this context for iterated torus knots
+        (knots with a single connected sum component).
+        """
+        if len(self) != 1:
+            raise ValueError("Cabling is only supported for iterated torus knots (single summand).")
+        
+        sign, knot_desc = self._desc[0]
+        new_desc = knot_desc + [(p, q)]
+        return GeneralizedAlgebraicKnot([(sign, new_desc)])
 
     def signature(self):
         """
