@@ -40,6 +40,9 @@ class GeneralizedAlgebraicKnot:
         if not isinstance(desc, (list, tuple)):
             raise TypeError(f"The description must be a list or tuple. Got {type(desc)}.")
 
+        if len(desc) == 0:
+            raise ValueError("The knot description must contain at least one summand.")
+
         for i, element in enumerate(desc):
             # 1. Check the top-level pair (sign, knot_description)
             if not isinstance(element, (list, tuple)) or len(element) != 2:

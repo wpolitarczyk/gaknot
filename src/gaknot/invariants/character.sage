@@ -137,12 +137,28 @@ class Character:
             
         return layer_values
 
+    def twisted_alexander_polynomial(self):
+        """
+        Computes the metabelian twisted Alexander polynomial associated to this character.
+        Currently only supported for positive torus knots.
+        """
+        if self._homology.knot.is_positive_torus_knot():
+            from gaknot.invariants.twisted_alexander import twisted_alexander_torus_knot
+            return twisted_alexander_torus_knot(self._homology.knot, self)
+        else:
+            raise NotImplementedError("Twisted Alexander polynomial is currently only implemented for positive torus knots.")
+
     def _count_factors_in_component(self, component):
         """Helper to count total generators in one connected sum component."""
         count = 0
         for layer in component['layers']:
             count += layer['multiplicity'] * len(layer['base_factors'])
         return count
+
+    @property
+    def homology(self):
+        """Returns the associated BranchedCoverHomology object."""
+        return self._homology
 
     @property
     def values(self):
