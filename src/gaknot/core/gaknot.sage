@@ -27,7 +27,10 @@ class GeneralizedAlgebraicKnot:
         """
         # Validate the description before storing it
         self.__class__.verify_description(desc)
-        self._desc = desc
+        self._desc = [
+            (sign, [(p, q) for p, q in knot_desc])
+            for sign, knot_desc in desc
+        ]
 
 
     @staticmethod
@@ -49,6 +52,11 @@ class GeneralizedAlgebraicKnot:
                 raise ValueError(f"Element at index {i} must be a pair (sign, knot_description).")
             
             sign, knot_desc = element
+
+            if len(knot_desc) == 0:
+                raise ValueError(
+                    f"Knot description at index {i} must contain at least one cabling pair."
+                )
 
             # 2. Check the sign
             if sign not in (1, -1):
@@ -83,7 +91,9 @@ class GeneralizedAlgebraicKnot:
     @property
     def description(self):
         """Read-only access to the knot description."""
-        return self._desc
+        return [
+            (sign, list(knot_desc)) for sign, knot_desc in self._desc
+        ]
 
     @classmethod
     def torus_knot(cls, p, q, sign=1):
@@ -108,10 +118,9 @@ class GeneralizedAlgebraicKnot:
         """
         if len(self) != 1:
             raise ValueError("Cabling is only supported for iterated torus knots (single summand).")
-        
+
         sign, knot_desc = self._desc[0]
-        new_desc = knot_desc + [(p, q)]
-        return GeneralizedAlgebraicKnot([(sign, new_desc)])
+        return type(self)([(sign, list(knot_desc) + [(p, q)])])
 
     def signature(self):
         """
@@ -188,9 +197,8 @@ class GeneralizedAlgebraicKnot:
         """
         if not isinstance(other, GeneralizedAlgebraicKnot):
             raise TypeError("Can only add another GeneralizedAlgebraicKnot.")
-        
-        new_knot_desc = self.description + other.description
-        return GeneralizedAlgebraicKnot(new_knot_desc)
+
+        return type(self)(self.description + other.description)
 
     def __neg__(self):
         """
