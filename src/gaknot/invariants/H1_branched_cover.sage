@@ -1,4 +1,7 @@
-from sage.all import Integer, ZZ, PolynomialRing, matrix, gcd
+from copy import deepcopy
+
+from sage.all import Integer, ZZ, diagonal_matrix, matrix, gcd
+from gaknot.core.gaknot import GeneralizedAlgebraicKnot
 
 class BranchedCoverHomology:
     """
@@ -17,7 +20,7 @@ class BranchedCoverHomology:
             decomposition: (Optional) A pre-computed list of homology components 
                            to bypass calculation (used in __add__).
         """
-        if not isinstance(cover_degree, (int, Integer)):
+        if isinstance(cover_degree, bool) or not isinstance(cover_degree, (int, Integer)):
             raise TypeError(f'The cover degree should be of type `int` or `Integer`. Got {type(cover_degree)}.')
 
         if cover_degree < 2:
@@ -25,8 +28,7 @@ class BranchedCoverHomology:
         
         self._cover_degree = cover_degree
 
-        # Use type name checking to bypass Jupyter reload conflicts
-        if type(knot).__name__ != 'GeneralizedAlgebraicKnot':
+        if not isinstance(knot, GeneralizedAlgebraicKnot):
             raise TypeError(f'The knot argument must be of type GeneralizedAlgebraicKnot. Got {type(knot)}.')
 
         self._knot = knot
@@ -40,7 +42,7 @@ class BranchedCoverHomology:
         #    'layers': list             # List of dicts representing satellite stages (Outer -> Inner)
         # }
         if decomposition is not None:
-            self._decomposition = decomposition
+            self._decomposition = deepcopy(decomposition)
         else:
             self._decomposition = self._compute_homology()
 
@@ -134,25 +136,19 @@ class BranchedCoverHomology:
     
     def __add__(self, other):
         """Computes the direct sum of two homology groups."""
-        if type(self).__name__ != type(other).__name__:
+        if not isinstance(other, BranchedCoverHomology):
             raise TypeError("Can only add another BranchedCoverHomology object.")
         if self.cover_degree != other.cover_degree:
             raise ValueError(f"Cannot add homologies of different cover degrees: {self.cover_degree} and {other.cover_degree}.")
             
         new_knot = self.knot + other.knot
         
-        # When adding, we concatenate the decomposition lists (deep copy structure)
+        # Concatenate independent copies of both decomposition structures.
         len_self = len(self._decomposition)
-        new_decomposition = []
-        
-        # Copy self (using simple list slice/copy for the top level, layers are dicts)
-        # We rely on the fact that we won't mutate the inner dicts later
-        for comp in self._decomposition:
-            new_decomposition.append(comp.copy())
-            
-        # Copy other (adjusting component indices)
-        for comp in other._decomposition:
-            new_comp = comp.copy()
+        new_decomposition = deepcopy(self._decomposition)
+
+        # Copy the other operand and adjust its component indices.
+        for new_comp in deepcopy(other._decomposition):
             new_comp['index'] += len_self
             new_decomposition.append(new_comp)
         
@@ -165,10 +161,14 @@ class BranchedCoverHomology:
     # --- Accessors ---
 
     def __getitem__(self, i):
-        """Returns the structural dictionary for the i-th connected sum component."""
-        if int(i) < 0 or int(i) >= len(self._decomposition):
+        """Returns a copy of the i-th connected sum component."""
+        if not isinstance(i, (int, Integer)) or isinstance(i, bool):
+            raise TypeError("Summand index must be an integer.")
+
+        i = int(i)
+        if i < 0 or i >= len(self._decomposition):
             raise IndexError("Summand index out of range.")
-        return self._decomposition[i]
+        return deepcopy(self._decomposition[i])
 
     def __len__(self):
         """Returns the number of connected sum components."""
@@ -185,12 +185,30 @@ class BranchedCoverHomology:
     @property
     def invariant_factors(self):
         """
-        Returns the flattened list of all invariant factors for backward compatibility.
+        Returns the sorted structural cyclic moduli for backward compatibility.
+
+        These values retain the decomposition into knot summands and satellite
+        layers. They need not form the canonical invariant-factor decomposition;
+        for example, Z/3Z ⊕ Z/5Z is represented here by [3, 5].
         """
         all_factors = []
         for comp in self._decomposition:
             all_factors.extend(self._get_component_factors(comp))
         return sorted(all_factors)
+
+    @property
+    def canonical_invariant_factors(self):
+        """Returns the canonical invariant factors of the homology group."""
+        factors = self.all_invariant_factors
+        if not factors:
+            return []
+
+        smith_form = diagonal_matrix(ZZ, factors).smith_form()[0]
+        return [
+            smith_form[i, i]
+            for i in range(smith_form.nrows())
+            if smith_form[i, i] != 1
+        ]
     
     @property
     def all_invariant_factors(self):
@@ -226,8 +244,8 @@ class BranchedCoverHomology:
 
     @property
     def decomposition(self):
-        """Returns the full structural breakdown of the homology."""
-        return self._decomposition
+        """Returns a copy of the full structural breakdown of the homology."""
+        return deepcopy(self._decomposition)
 
     @property
     def betti_number(self):
@@ -266,7 +284,7 @@ class BranchedCoverHomologyElement:
     Represents an element of the first homology group of a branched cover of a knot.
     
     Elements are represented as a flat list of integers corresponding to the
-    structural invariant factors of the homology group.
+    structural cyclic moduli of the homology group.
     """
     def __init__(self, homology, values):
         """
