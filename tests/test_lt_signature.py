@@ -162,14 +162,14 @@ def test_lt_signature_torus_knot_symmetry_parametric(p, q):
 # ---------------------------------------------------------------------------
 
 # The table mixes two- and three-layer descriptions, algebraic-style cables,
-# small winding parameters, and reversed-looking base pairs.  The T(2,3)
-# cabled by (2,5) example is omitted because tests/test_signature.py already
-# checks that particular cabling formula pointwise.
+# small winding parameters, and reversed-looking base pairs.
 @pytest.mark.parametrize("desc", [
     # Two-layer examples with distinct winding products and torus parameters.
     ([(2, 3), (6, 5)]),
     ([(2, 5), (10, 3)]),
     ([(3, 4), (12, 5)]),
+    # A small winding-number example formerly covered only at five sample points.
+    ([(2, 3), (2, 5)]),
     # This case checks that p and q are used in their documented roles even
     # when the base pair is written in the symmetric order T(3,2).
     ([(3, 2), (2, 3)]),
