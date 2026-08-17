@@ -2,7 +2,13 @@ from sage.all import QQ, ZZ, Rational
 
 class Character:
     """
-    Represents a character chi: H_1(Sigma_N(K)) -> Q/Z.
+    Represents a character on the torsion subgroup of H_1(Sigma_N(K)).
+
+    The class stores the character as the images of the invariant-factor
+    generators in Q/Z.  A positive invariant factor m describes Z/mZ, so the
+    corresponding image x must satisfy m*x = 0 in Q/Z.  A zero invariant
+    factor describes a free Z summand; its value is required to be zero
+    because this class evaluates characters only on the torsion subgroup.
     
     The input values must follow the structural hierarchy of the knot:
       [ 
@@ -17,6 +23,8 @@ class Character:
     """
     def __init__(self, homology, nested_values):
         """
+        Construct and validate a torsion-supported character.
+
         Args:
             homology: A BranchedCoverHomology object.
             nested_values: A nested list of rational numbers.
@@ -80,7 +88,8 @@ class Character:
                                 f"Value must be rational. Got {raw_val}."
                             )
 
-                        # Modulus Check
+                        # A generator of Z/mZ may map to x in Q/Z precisely
+                        # when m*x is integral, i.e. zero modulo one.
                         if modulus != 0:
                             if not (rational_val * modulus).is_integer():
                                 raise ValueError(
@@ -88,15 +97,17 @@ class Character:
                                     f"Value {rational_val} is not compatible with Z/{modulus}Z."
                                 )
                         else:
-                            # Torsion-free part (modulus 0)
-                            # Characters must be 0 on torsion-free parts to be defined only on the torsion part
+                            # A zero factor denotes a free Z generator.  This
+                            # class models only the restriction to Tor(H_1), so
+                            # it stores zero in every such coordinate.
                             if rational_val != 0:
                                 raise ValueError(
                                     f"Invalid value in Comp {c_idx}, Layer {l_idx}. "
                                     f"Characters must be zero on the torsion-free part (modulus 0). Got {rational_val}."
                                 )
 
-                        # Normalize and Store
+                        # Choose the canonical representative in [0, 1) for
+                        # the element of Q/Z before flattening it into storage.
                         normalized_val = rational_val - rational_val.floor()
                         self._values.append(normalized_val)
                         val_ptr += 1
@@ -162,23 +173,39 @@ class Character:
 
     @property
     def values(self):
-        """Returns the flattened list of normalized values."""
-        return self._values
+        """Returns a copy of the flattened list of normalized values.
+
+        Character values are validated when the character is constructed.  A
+        defensive copy prevents callers from mutating the internal list later
+        and thereby bypassing the rationality and modulus checks above.
+        """
+        return list(self._values)
 
     def __call__(self, element):
         """
-        Evaluates the character on a BranchedCoverHomologyElement.
-        Returns a rational in [0, 1).
+        Evaluate the character on a torsion homology element.
+
+        The coordinate dot product is reduced modulo one and returned as the
+        unique rational representative in [0, 1).  Evaluation on a non-torsion
+        element is deliberately undefined for this torsion-supported class.
         """
+        # Coordinate values are meaningful only for homology elements, whose
+        # constructor also guarantees the expected number of coordinates.
         if type(element).__name__ != 'BranchedCoverHomologyElement':
             raise TypeError(f"Expected a BranchedCoverHomologyElement, got {type(element)}.")
             
+        # Equal-looking coordinate lists from different covers must not be
+        # paired with this character's invariant-factor decomposition.
         if element.homology != self._homology:
             raise ValueError("Character and element must belong to the same homology group.")
             
+        # A nonzero free coordinate gives the element infinite order, placing
+        # it outside the domain represented by this Character object.
         if not element.is_torsion:
-             raise ValueError("Character evaluation is only defined for torsion elements.")
+            raise ValueError("Character evaluation is only defined for torsion elements.")
 
+        # Evaluate the homomorphism as the coordinate dot product.  The final
+        # subtraction selects its canonical representative modulo Z.
         res = 0
         for chi_i, g_i in zip(self._values, element.values):
             res += chi_i * g_i

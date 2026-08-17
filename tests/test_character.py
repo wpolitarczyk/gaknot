@@ -235,3 +235,117 @@ def test_complex_k3_case():
             assert len(layer_vals) == m
             for copy_vals in layer_vals:
                 assert len(copy_vals) == len(layer['base_factors'])
+
+
+# The tests below cover the general Character API rather than the distinction
+# between torsion and non-torsion homology elements.  Keeping them here makes
+# test_torsion_logic.py responsible only for that distinction.
+
+
+@pytest.fixture
+def trefoil_double_cover():
+    """Return the homology of the trefoil's double branched cover, Z/3Z."""
+    knot = GeneralizedAlgebraicKnot([(1, [(2, 3)])])
+    return BranchedCoverHomology(knot, 2)
+
+
+@pytest.fixture
+def trefoil_character(trefoil_double_cover):
+    """Return the character that maps the generator of Z/3Z to 1/3."""
+    return Character(trefoil_double_cover, [[[QQ(1) / 3]]])
+
+
+def test_character_values_are_defensively_copied(trefoil_double_cover):
+    # The value 1/3 is valid on the generator of Z/3Z because its order divides
+    # three.  In contrast, the replacement value 1/2 used below is invalid.
+    char = Character(trefoil_double_cover, [[[QQ(1) / 3]]])
+
+    # Mutating the public value list must affect only the returned copy, not
+    # the internal list that passed validation during character construction.
+    exported_values = char.values
+    exported_values[0] = QQ(1) / 2
+    exported_values.append(QQ(0))
+
+    # Both the coordinate count and the original homomorphism remain intact.
+    assert char.values == [QQ(1) / 3]
+    assert char(trefoil_double_cover.element([1])) == QQ(1) / 3
+
+
+def test_character_rejects_invalid_homology():
+    # Character construction requires the structural decomposition supplied by
+    # a BranchedCoverHomology instance; an arbitrary object cannot replace it.
+    with pytest.raises(TypeError, match="Expected a BranchedCoverHomology object"):
+        Character(None, [[[0]]])
+
+
+def test_character_rejects_invalid_evaluation_argument(trefoil_character):
+    # A raw coordinate list is not enough: evaluation also needs the homology
+    # carried by a BranchedCoverHomologyElement.
+    with pytest.raises(TypeError, match="Expected a BranchedCoverHomologyElement"):
+        trefoil_character([1])
+
+
+def test_character_rejects_element_from_different_homology(
+    trefoil_double_cover, trefoil_character
+):
+    # Even elements built from the same knot are incompatible when the
+    # branched-cover degree, and hence the homology group, is different.
+    h2 = BranchedCoverHomology(trefoil_double_cover.knot, 3)
+    el2 = h2.element([1, 1])
+    with pytest.raises(
+        ValueError,
+        match="Character and element must belong to the same homology group",
+    ):
+        trefoil_character(el2)
+
+
+@pytest.mark.parametrize(
+    "char_values, error_message",
+    [
+        # No component values are supplied for the knot's single summand.
+        ([], "Input structure mismatch"),
+        # The component is present, but its only satellite layer is omitted.
+        ([[]], "Structure mismatch in Component 0"),
+        # The layer of a cyclic group has one generator, not two.
+        ([[[1, 1]]], "Value mismatch in Component 0, Layer 0"),
+    ],
+    ids=["summand-count", "layer-count", "value-count"],
+)
+def test_character_rejects_malformed_value_structure(
+    trefoil_double_cover, char_values, error_message
+):
+    # Each hierarchy level is checked separately so a regression at one level
+    # cannot prevent pytest from exercising the other levels.
+    with pytest.raises(ValueError, match=error_message):
+        Character(trefoil_double_cover, char_values)
+
+
+def test_character_rejects_non_rational_value(trefoil_double_cover):
+    # Character values live in Q/Z, so a string with no rational
+    # interpretation must be rejected before any modulus calculation.
+    with pytest.raises(TypeError, match="Value must be rational"):
+        Character(trefoil_double_cover, [[["invalid"]]])
+
+
+def test_character_rejects_incompatible_modulus(trefoil_double_cover):
+    # A homomorphism Z/3Z -> Q/Z must send a generator to an element whose
+    # order divides three; 1/2 has order two and is therefore incompatible.
+    with pytest.raises(ValueError, match="is not compatible with Z/3Z"):
+        Character(trefoil_double_cover, [[[QQ(1) / 2]]])
+
+
+@pytest.mark.parametrize(
+    "component_index, layer_index, error_message",
+    [
+        (1, 0, "Component index 1 out of range"),
+        (0, 1, "Layer index 1 out of range"),
+    ],
+    ids=["component-index", "layer-index"],
+)
+def test_character_rejects_invalid_restriction_index(
+    trefoil_character, component_index, layer_index, error_message
+):
+    # Component and layer bounds are independent contracts and therefore run
+    # as separate parametrized cases.
+    with pytest.raises(IndexError, match=error_message):
+        trefoil_character.restrict_to_layer(component_index, layer_index)

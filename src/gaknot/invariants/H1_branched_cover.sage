@@ -354,11 +354,22 @@ class BranchedCoverHomologyElement:
 
     @property
     def is_torsion(self):
-        """Returns True if the element is a torsion element."""
+        """Return whether this element has finite order.
+
+        In the invariant-factor convention used here, a positive factor
+        denotes a finite cyclic summand and factor zero denotes a free Z
+        summand.  Coordinates in finite summands are automatically torsion;
+        therefore only the coordinates paired with zero factors need testing.
+        """
         factors = self._homology.all_invariant_factors
         for v, f in zip(self._values, factors):
+            # Any nonzero free coordinate gives the whole element infinite
+            # order, regardless of its coordinates in finite cyclic summands.
             if f == 0 and v != 0:
                 return False
+
+        # All free coordinates vanish, so the element lies in the direct sum
+        # of the finite cyclic factors (including the zero element).
         return True
 
     def __add__(self, other):
