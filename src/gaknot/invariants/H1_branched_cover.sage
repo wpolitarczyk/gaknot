@@ -359,11 +359,23 @@ class BranchedCoverHomology:
         return factors
     
     def zero(self):
-        """Return the identity element in flattened structural coordinates."""
+        """Return the identity element in flattened structural coordinates.
+
+        One zero is supplied for every structural factor, including free
+        factors, so the result is both the additive identity and a torsion
+        element even when the ambient homology has positive free rank.
+        """
         return BranchedCoverHomologyElement(self, [0] * len(self.all_invariant_factors))
 
     def element(self, values):
-        """Construct an element from flat or component/layer-nested values."""
+        """Construct and normalize an element belonging to this group.
+
+        ``values`` may be a single integer for a one-generator group, a flat
+        list in ``all_invariant_factors`` order, or a nested description with
+        shape ``[component][layer][coordinate]``.  The element constructor
+        validates the shape, flattens repeated layer copies, reduces finite
+        coordinates, and preserves free coordinates as integers.
+        """
         return BranchedCoverHomologyElement(self, values)
 
     @staticmethod
@@ -589,11 +601,15 @@ class BranchedCoverHomologyElement:
         if self._homology != other._homology:
             raise ValueError("Cannot subtract elements from different homology groups.")
             
+        # Reconstructing through ``__init__`` reduces negative differences in
+        # finite summands while retaining them unchanged in free summands.
         new_values = [v1 - v2 for v1, v2 in zip(self._values, other._values)]
         return BranchedCoverHomologyElement(self._homology, new_values)
 
     def __neg__(self):
         """Return the additive inverse, normalized in every finite summand."""
+        # The constructor turns -v into its canonical residue modulo each
+        # positive factor and leaves ordinary integer negatives on free factors.
         new_values = [-v for v in self._values]
         return BranchedCoverHomologyElement(self._homology, new_values)
 
@@ -601,6 +617,8 @@ class BranchedCoverHomologyElement:
         """Multiply every coordinate by a Python or Sage integer."""
         if not isinstance(scalar, (int, Integer)):
             raise TypeError("Scalar multiplication only supported for integers.")
+        # Normalization is intentionally centralized in the constructor rather
+        # than duplicated for left and right scalar multiplication.
         new_values = [v * scalar for v in self._values]
         return BranchedCoverHomologyElement(self._homology, new_values)
 
@@ -609,7 +627,13 @@ class BranchedCoverHomologyElement:
         return self.__mul__(scalar)
 
     def __eq__(self, other):
-        """Compare the parent group and normalized coordinates."""
+        """Compare parent identity and normalized structural coordinates.
+
+        ``BranchedCoverHomology`` currently has identity-based equality, so
+        elements constructed from two separately computed but equal-looking
+        groups do not compare equal.  This prevents coordinates from being
+        identified without an explicit isomorphism between their parents.
+        """
         if not isinstance(other, BranchedCoverHomologyElement):
             return False
         return self._homology == other._homology and self._values == other._values
