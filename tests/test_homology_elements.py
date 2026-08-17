@@ -32,6 +32,19 @@ def test_homology_element_creation(knot_desc, N, input_values, expected_values):
     el = h1.element(input_values)
     assert el.values == [Integer(v) for v in expected_values]
 
+
+def test_homology_element_values_are_defensively_copied():
+    knot = GeneralizedAlgebraicKnot.torus_knot(2, 3)
+    h1 = BranchedCoverHomology(knot, 2)
+    element = h1.element([1])
+
+    exported_values = element.values
+    exported_values[0] = 2
+    exported_values.append(0)
+
+    assert element.values == [1]
+
+
 @pytest.mark.parametrize("knot_desc, N, v1, v2, scalar, expected_sum, expected_diff, expected_neg, expected_mul", [
     # 1. T(2,3), N=2: Factors [3].
     ([(1, [(2, 3)])], 2, [1], [2], 2, [0], [2], [2], [2]),

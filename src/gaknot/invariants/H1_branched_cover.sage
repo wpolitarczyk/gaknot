@@ -349,8 +349,8 @@ class BranchedCoverHomologyElement:
 
     @property
     def values(self):
-        """Returns the flattened list of values."""
-        return self._values
+        """Returns a copy of the flattened list of values."""
+        return list(self._values)
 
     @property
     def is_torsion(self):
