@@ -1,0 +1,12 @@
+name: sage_env
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - sage=10.7
+  - matplotlib
+  - pytest
+  - make
+  - pip
