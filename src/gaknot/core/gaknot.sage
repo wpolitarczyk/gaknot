@@ -222,6 +222,20 @@ class GeneralizedAlgebraicKnot:
         from gaknot.invariants.LT_signature import LT_signature_generalized_algebraic_knot
         return LT_signature_generalized_algebraic_knot(self.description)
 
+    def casson_gordon(self, character_parameters):
+        r"""Return the supported double-cover Casson--Gordon invariant.
+
+        ``character_parameters`` supplies the distinguished integer ``a`` on
+        each connected-sum component.  See
+        ``gaknot.invariants.casson_gordon.casson_gordon_invariant`` for the
+        precise ``(2,q)`` cabling hypotheses and the returned contribution
+        record.
+        """
+        # Keep the core description class lightweight until this specialized
+        # invariant is requested, following the same pattern as ``signature``.
+        from gaknot.invariants.casson_gordon import casson_gordon_invariant
+        return casson_gordon_invariant(self, character_parameters)
+
     def alexander_polynomial(self):
         """Return the normalized Alexander polynomial over ``ZZ[t]``.
 
