@@ -13,7 +13,9 @@ The package currently provides:
 - normalized Alexander polynomials;
 - first homology groups of cyclic branched covers, including elements in
   structural coordinates;
-- characters on the torsion of branched-cover homology; and
+- characters on the torsion of branched-cover homology;
+- Casson--Gordon signatures and nullities for supported `(2,q)`-cable sums;
+- Gilmer four-genus obstruction searches with explicit witnesses; and
 - metabelian twisted Alexander polynomials for supported positive torus knots.
 
 The project was created as part of the proof of the main lemma in
@@ -55,7 +57,7 @@ of truth:
 gaknot/
 |-- src/gaknot/
 |   |-- core/          # GeneralizedAlgebraicKnot data model
-|   |-- invariants/    # Signatures, homology, characters, and polynomials
+|   |-- invariants/    # Signatures, homology, characters, genus bounds, etc.
 |   |-- utils/         # Shared algebraic and build utilities
 |   `-- legacy/        # Historical code and notebooks
 |-- tests/             # Pytest correctness and regression tests
@@ -186,6 +188,95 @@ The twisted Alexander calculation is currently restricted to positive,
 single-summand torus knots, and the character must be defined on the
 `p`-fold cover of `T(p,q)`.
 
+### Casson--Gordon signatures of `(2,q)`-cables
+
+For an odd prime `q`, the package implements the double-cover cabling formula
+
+```text
+sigma(K(2,q), chi_a)
+    = -q + 2*a*(q-a)/q + 2*sigma_K(exp(2*pi*i*a/q)).
+```
+
+The supported domain consists of signed connected sums whose components are
+ordinary `T(2,q)` knots or iterated torus knots with an outermost `(2,q)`
+cabling operation and prime `q`. Character parameters are automatically
+reduced modulo the corresponding `q`.
+
+```python
+# The (2,5)-cable of the trefoil.
+cable = GeneralizedAlgebraicKnot.iterated_torus_knot(
+    [(2, 3), (2, 5)]
+)
+
+cg = cable.casson_gordon(1)
+
+print(cg.pattern_signature)    # -17/5
+print(cg.satellite_signature)  # -4
+print(cg.sigma)                # -37/5
+print(cg.eta)                  # 0
+```
+
+For a connected sum, pass one parameter per visible summand:
+
+```python
+knot_sum = cable + (-cable)
+cg_sum = knot_sum.casson_gordon([1, 1])
+
+print(cg_sum.sigma)  # 0
+print(cg_sum.eta)    # 1
+```
+
+These integer parameters refer to the geometrically distinguished generators
+of the lens-space summands. They are deliberately not accepted as
+`Character` objects: `Character` uses Smith-basis coordinates, and identifying
+that basis with the distinguished linking-form basis requires additional
+data. Silently treating the two bases as identical could assign the wrong
+character.
+
+The returned `CassonGordonInvariant` is immutable and retains one
+`CassonGordonSummand` record per component. This makes pattern, companion, and
+connected-sum contributions available for inspection.
+
+### Gilmer four-genus obstruction
+
+The package can apply the primary-isotropic search used in the paper to try to
+prove that the topological four-genus is greater than a proposed value `g`:
+
+```python
+genus_test = cable.gilmer_genus_obstruction(0)
+
+print(genus_test.certified)   # True
+print(genus_test.lower_bound) # 1
+print(genus_test.successful_primes)
+```
+
+The search uses Gilmer's general inequality
+
+```text
+|sigma(K, chi_x) + sigma_K| <= eta(K, chi_x) + 4*g + 1,
+```
+
+rather than hard-coding its `g=1`, `sigma_K=0` specialization. It decomposes
+the diagonal linking form into prime-primary parts and checks one canonical
+representative of every projective isotropic line in each eligible part.
+
+The result is a sufficient obstruction, not a four-genus decision procedure:
+
+- `certified == True` proves `g_4^top(K) > g`, and `lower_bound` is `g+1`;
+- `certified == False` means that this search is inconclusive. It does not
+  assert that a genus-`g` surface exists.
+
+Every primary check records its search-space and isotropic-line counts. A
+successful check retains a sample `GilmerViolationWitness`; an inconclusive
+check retains the first isotropic line for which no violating multiple was
+found. `PrimeDiagonalLinkingForm` also exposes exact pairing, isotropy, and
+metabolizer checks for the supported prime-cyclic forms.
+
+The regression suite reconstructs the eight-summand knot from Theorem 1.1 of
+the cited paper. It verifies all 7,056 isotropic lines in the `83`-primary
+part and all 10,816 lines in the `103`-primary part, certifying the lower bound
+two.
+
 ### Plotting signature functions
 
 `SignatureFunction.plot()` displays a plot interactively when no path is
@@ -231,7 +322,9 @@ useful entry points are:
 - [`GeneralizedAlgebraicKnot`](src/gaknot/core/gaknot.sage);
 - [signature functions and plotting](src/gaknot/invariants/signature.sage);
 - [branched-cover homology](src/gaknot/invariants/H1_branched_cover.sage);
-- [characters](src/gaknot/invariants/character.sage); and
+- [characters](src/gaknot/invariants/character.sage);
+- [Casson--Gordon invariants](src/gaknot/invariants/casson_gordon.sage);
+- [Gilmer genus obstructions](src/gaknot/invariants/genus_bounds.sage); and
 - [the test suite](tests/), which includes mathematical examples, validation
   rules, and regression cases.
 
