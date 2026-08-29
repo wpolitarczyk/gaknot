@@ -7,6 +7,13 @@ from .invariants.casson_gordon import (
     CassonGordonSummand,
     casson_gordon_invariant,
 )
+from .invariants.genus_bounds import (
+    GenusObstructionResult,
+    GilmerViolationWitness,
+    PrimaryGenusCheck,
+    PrimeDiagonalLinkingForm,
+    gilmer_genus_obstruction,
+)
 
 __all__ = [
     'GeneralizedAlgebraicKnot',
@@ -17,4 +24,9 @@ __all__ = [
     'CassonGordonInvariant',
     'CassonGordonSummand',
     'casson_gordon_invariant',
+    'GenusObstructionResult',
+    'GilmerViolationWitness',
+    'PrimaryGenusCheck',
+    'PrimeDiagonalLinkingForm',
+    'gilmer_genus_obstruction',
 ]
