@@ -366,6 +366,13 @@ make build
 # Build and run the complete pytest correctness suite.
 make test
 
+# Run the complete suite with quieter or more verbose pytest output.
+make test TEST_VERBOSITY=-q
+make test TEST_VERBOSITY=-vv
+
+# Run one test file, optionally with a chosen verbosity level.
+make test TEST_FILE=tests/test_character.py TEST_VERBOSITY=-v
+
 # Run performance measurements without machine-dependent pass/fail limits.
 make benchmark_signature
 
@@ -374,7 +381,10 @@ make prep_commit
 ```
 
 Performance measurements are deliberately kept separate from correctness
-tests because timings depend on the machine and current load.
+tests because timings depend on the machine and current load. `TEST_FILE` may
+also be a pytest node id, for example
+`tests/test_character.py::test_character_values_are_defensively_copied`, when
+only one test function should run.
 
 ## Further documentation
 

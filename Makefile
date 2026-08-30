@@ -8,6 +8,18 @@ SAGE_FILES := $(shell find src/gaknot -name "*.sage" -not -path "*/.ipynb_checkp
 # Define the corresponding .py files
 PY_FILES := $(patsubst %.sage,%.py,$(SAGE_FILES))
 
+# Optional pytest controls.  With no command-line overrides, ``make test``
+# retains its historical behavior and runs the complete tests/ directory at
+# pytest's standard verbosity.  For example:
+#
+#   make test TEST_VERBOSITY=-q
+#   make test TEST_FILE=tests/test_character.py TEST_VERBOSITY=-vv
+#
+# TEST_FILE may also contain a pytest node id selecting one class or function.
+TEST_FILE ?=
+TEST_VERBOSITY ?=
+TEST_TARGET := $(if $(strip $(TEST_FILE)),$(TEST_FILE),tests/)
+
 .PHONY: test benchmark_signature clean prep_commit check_env install build
 
 # Check that a Sage installation is available. The recommended Conda
@@ -33,9 +45,10 @@ build: check_env $(PY_FILES)
 install: build
 	sage -pip install -e ".[test]"
 
-# Run all standard Python tests in the tests/ directory
+# Run the complete suite by default, or TEST_FILE when one is supplied.  The
+# verbosity value is passed directly to pytest, supporting -q, -v, -vv, etc.
 test: build
-	PYTHONPATH=src sage -python -m pytest tests/
+	PYTHONPATH=src sage -python -m pytest $(TEST_VERBOSITY) "$(TEST_TARGET)"
 
 # Run performance measurements separately from correctness tests. The benchmark
 # reports timings but deliberately imposes no machine-dependent pass/fail limit.
