@@ -20,7 +20,12 @@ TEST_FILE ?=
 TEST_VERBOSITY ?=
 TEST_TARGET := $(if $(strip $(TEST_FILE)),$(TEST_FILE),tests/)
 
-.PHONY: test benchmark_signature clean prep_commit check_env install build
+# Execute either every tutorial notebook or one explicitly selected file.
+# Notebooks run in fresh Sage kernels and are not overwritten with outputs.
+NOTEBOOK_FILE ?=
+NOTEBOOK_TARGET := $(if $(strip $(NOTEBOOK_FILE)),$(NOTEBOOK_FILE),notebooks)
+
+.PHONY: test notebooks benchmark_signature clean clean_notebooks prep_commit check_env install build
 
 # Check that a Sage installation is available. The recommended Conda
 # environment is named sage_env, but native and differently named Sage
@@ -43,12 +48,17 @@ build: check_env $(PY_FILES)
 
 # Install the package in editable mode for development
 install: build
-	sage -pip install -e ".[test]"
+	sage -pip install -e ".[test,notebooks]"
 
 # Run the complete suite by default, or TEST_FILE when one is supplied.  The
 # verbosity value is passed directly to pytest, supporting -q, -v, -vv, etc.
 test: build
 	PYTHONPATH=src sage -python -m pytest $(TEST_VERBOSITY) "$(TEST_TARGET)"
+
+# Smoke-test the executable tutorials without adding outputs or execution
+# counts to the committed notebooks. Set NOTEBOOK_FILE to check one file.
+notebooks: build
+	PYTHONPATH=src sage -python scripts/execute_notebooks.py "$(NOTEBOOK_TARGET)"
 
 # Run performance measurements separately from correctness tests. The benchmark
 # reports timings but deliberately imposes no machine-dependent pass/fail limit.
@@ -62,6 +72,12 @@ clean:
 	find tests -name "__pycache__" -type d -exec rm -rf {} +
 	find . -name "*.pyc" -delete
 
+# Remove saved outputs, execution counts, and transient execution metadata
+# from every current and historical notebook in the repository.
+clean_notebooks:
+	python3 scripts/clean_notebooks.py
+
 # Perform all pre-commit cleanup steps
 prep_commit: clean
+	python3 scripts/clean_notebooks.py
 	@echo "Pre-commit cleanup complete."

@@ -26,6 +26,10 @@ dependencies = [
 test = [
     "pytest",
 ]
+notebooks = [
+    "nbclient",
+    "nbformat",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/wpolitarczyk/gaknot"

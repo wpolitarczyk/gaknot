@@ -8,5 +8,7 @@ dependencies:
   - sage=10.7
   - matplotlib
   - pytest
+  - nbclient
+  - nbformat
   - make
   - pip

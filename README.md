@@ -64,6 +64,7 @@ gaknot/
 |   |-- utils/         # Shared algebraic and build utilities
 |   `-- legacy/        # Historical code and notebooks
 |-- tests/             # Pytest correctness and regression tests
+|-- notebooks/         # Ordered, executable SageMath tutorials
 |-- benchmarks/        # Performance measurements, separate from tests
 |-- environment.yml    # Recommended Conda environment
 |-- pyproject.toml     # Package and dependency metadata
@@ -78,7 +79,8 @@ They are ignored by Git and removed by `make prep_commit`.
 - SageMath 10.7 or a compatible version;
 - Python 3.9 or newer, as supported by the Sage installation;
 - GNU Make and standard Unix command-line tools; and
-- Matplotlib at runtime and pytest for development.
+- Matplotlib at runtime, pytest for development, and nbclient/nbformat for
+  reproducible tutorial execution.
 
 The supplied Conda specification installs all of these dependencies. A native
 SageMath installation can also be used, provided that the `sage` executable is
@@ -112,7 +114,7 @@ make install
 ```
 
 This preparses the `.sage` files and runs
-`sage -pip install -e ".[test]"`. Imports must be made from a Python interpreter
+`sage -pip install -e ".[test,notebooks]"`. Imports must be made from a Python interpreter
 that has access to Sage, such as the interpreter in the active Conda
 environment or `sage -python`.
 
@@ -383,6 +385,33 @@ The public `SignaturePloter` class retains its historical spelling for
 compatibility. It also supplies `plot_many`, `plot_sum_of_two`, and
 `tikz_plot`; the latter writes a standalone `.tex` file.
 
+## Executable tutorials
+
+The ordered notebooks in [`notebooks/`](notebooks/) provide a guided route
+from the GA-knot data model through signatures, branched-cover characters,
+Casson--Gordon genus obstructions, and metabelian twisted signatures. They
+include interpretation notes, support boundaries, and examples of explicit
+coverage gaps as well as successful calculations.
+
+After activating the Sage environment and running `make build`, start Jupyter
+from the repository root and select the **SageMath** kernel:
+
+```bash
+jupyter notebook notebooks/
+```
+
+The committed files contain no saved outputs. Run every notebook in a fresh
+kernel without modifying it, or select one file, with:
+
+```bash
+make notebooks
+make notebooks NOTEBOOK_FILE=notebooks/04_metabelian_twisted_signatures.ipynb
+```
+
+See the [notebook index](notebooks/README.md) for the recommended order and a
+description of what each tutorial covers. Notebook execution is a smoke test;
+the pytest suite remains the authoritative regression suite.
+
 ## Development and testing
 
 All development commands require Sage on `PATH`, except cleanup commands.
@@ -401,10 +430,14 @@ make test TEST_VERBOSITY=-vv
 # Run one test file, optionally with a chosen verbosity level.
 make test TEST_FILE=tests/test_character.py TEST_VERBOSITY=-v
 
+# Execute all tutorial notebooks, or one selected notebook, in clean kernels.
+make notebooks
+make notebooks NOTEBOOK_FILE=notebooks/02_branched_covers_and_characters.ipynb
+
 # Run performance measurements without machine-dependent pass/fail limits.
 make benchmark_signature
 
-# Remove generated Python files and Python/pytest caches before committing.
+# Remove generated Python/cache files and all saved notebook execution state.
 make prep_commit
 ```
 
@@ -487,6 +520,7 @@ exhaustive bibliography of Casson--Gordon theory or knot signatures.
 The `.sage` source files contain detailed module and API docstrings. The most
 useful entry points are:
 
+- [the executable tutorial notebooks](notebooks/README.md);
 - [`GeneralizedAlgebraicKnot`](src/gaknot/core/gaknot.sage);
 - [signature functions and plotting](src/gaknot/invariants/signature.sage);
 - [branched-cover homology](src/gaknot/invariants/H1_branched_cover.sage);
