@@ -35,11 +35,14 @@ from sage.all import I, Integer, QQ, QQbar, identity_matrix, matrix
 from gaknot import (
     HermitianInertia,
     SignatureFunction,
+    YanagidaExceptionalRoot,
     YanagidaSignatureJump,
+    YanagidaSignatureProfile,
     YanagidaTorusData,
     exact_hermitian_inertia,
     yanagida_generic_signature_jumps,
     yanagida_local_signature_jump,
+    yanagida_signature_profile,
 )
 
 
@@ -358,3 +361,159 @@ def test_results_and_explanatory_matrices_are_immutable(theta_one_q_five_data):
         result.residue_form[0, 0] = 1
     with pytest.raises(ValueError, match="immutable"):
         result.quotient_basis[0, 0] = 0
+
+
+def test_signature_profile_certifies_vacuous_exceptional_roots(
+    theta_one_q_five_data,
+):
+    r"""An excluded root need not contain any local module to pair.
+
+    For ``T(2,5)`` and ``b=(1,4)``, the generic pairing theorem computes the
+    jumps at ``a=2,3``.  At each excluded value ``a=1,4`` exactly one character
+    coordinate equals ``-a``.  Here ``m=2``, so the dimension formula
+
+    ``m - 1 - character_multiplicity = 2 - 1 - 1 = 0``
+
+    proves that both exceptional primary modules vanish.  Their jumps are
+    therefore genuinely zero; they are not zeros inserted as placeholders.
+    """
+    profile = yanagida_signature_profile(theta_one_q_five_data)
+
+    assert isinstance(profile, YanagidaSignatureProfile)
+    assert profile.data is theta_one_q_five_data
+    assert tuple(result.a for result in profile.generic_jumps) == (2, 3)
+    assert tuple(result.a for result in profile.exceptional_roots) == (1, 4)
+    assert all(
+        isinstance(result, YanagidaExceptionalRoot)
+        for result in profile.exceptional_roots
+    )
+    assert all(
+        result.character_multiplicity == 1
+        and result.module_dimension == 0
+        and result.has_zero_module
+        and result.jump_is_resolved
+        for result in profile.exceptional_roots
+    )
+
+    assert profile.unresolved_exceptional_roots == ()
+    assert profile.zero_module_exceptional_roots == profile.exceptional_roots
+    assert profile.is_complete_at_nontrivial_roots
+    assert profile.require_complete_at_nontrivial_roots() is profile
+    assert profile.known_jump_values == (
+        (QQ(1) / 5, 0),
+        (QQ(2) / 5, -1),
+        (QQ(3) / 5, 1),
+        (QQ(4) / 5, 0),
+    )
+
+
+def test_signature_profile_jump_lookup_reduces_integer_lifts(
+    theta_one_q_five_data,
+):
+    r"""Lookup follows the same residue-class convention as local models.
+
+    The assertions cover both kinds of resolved roots.  The lift ``7`` is the
+    generic class ``a=2`` and must return the computed negative Hodge sign;
+    the lift ``-1`` is the zero-module exceptional class ``a=4`` and must
+    return its proved zero contribution.
+    """
+    profile = yanagida_signature_profile(theta_one_q_five_data)
+
+    assert profile.jump_at(7) == -1
+    assert profile.jump_at(-1) == 0
+
+
+def test_signature_profile_reports_surviving_exceptional_modules():
+    r"""Positive-dimensional exceptional modules remain visibly unresolved.
+
+    For ``m=3,n=4,b=(0,1,3)``, the roots ``a=1`` and ``a=3`` each match one
+    character coordinate.  Specializing equation (14) gives rank two and a
+    one-dimensional cokernel at both roots.  Equation (19) is unavailable
+    there, so the profile records the dimensions without assigning signs.
+
+    The only generic root is ``a=2``.  Its two Hodge signs cancel, which is a
+    computed zero and therefore appears in ``known_jump_values``.  This makes
+    the distinction between "computed zero" and "unknown" testable.
+    """
+    data = YanagidaTorusData(3, 4, (0, 1, 3))
+
+    profile = yanagida_signature_profile(data)
+
+    assert tuple(result.a for result in profile.generic_jumps) == (2,)
+    assert profile.generic_jumps[0].jump == 0
+    assert profile.zero_module_exceptional_roots == ()
+    assert tuple(
+        (result.a, result.character_multiplicity, result.module_dimension)
+        for result in profile.unresolved_exceptional_roots
+    ) == ((1, 1, 1), (3, 1, 1))
+    assert not profile.is_complete_at_nontrivial_roots
+    assert profile.known_jump_values == ((QQ(1) / 2, 0),)
+
+    with pytest.raises(NotImplementedError, match=r"a=1.*dimension 1"):
+        profile.jump_at(1)
+    with pytest.raises(NotImplementedError, match=r"a=\(1, 3\)"):
+        profile.require_complete_at_nontrivial_roots()
+
+
+def test_signature_profile_uses_character_multiplicity_not_just_exceptionality():
+    r"""Repeated exceptional coordinates can make the local module vanish.
+
+    In ``b=(1,1,2)`` modulo four, ``a=2`` matches the single coordinate ``2``
+    and leaves a one-dimensional unresolved module.  In contrast, ``a=3``
+    matches both coordinates equal to ``1`` and leaves dimension zero.  A
+    boolean exceptional/nonexceptional flag would lose precisely this
+    distinction, so the public records expose the full multiplicity.
+    """
+    data = YanagidaTorusData(3, 4, (1, 1, 2))
+
+    profile = yanagida_signature_profile(data)
+    exceptional_by_a = {
+        result.a: result for result in profile.exceptional_roots
+    }
+
+    assert tuple(result.a for result in profile.generic_jumps) == (1,)
+    assert exceptional_by_a[2].character_multiplicity == 1
+    assert exceptional_by_a[2].module_dimension == 1
+    assert not exceptional_by_a[2].jump_is_resolved
+    assert exceptional_by_a[3].character_multiplicity == 2
+    assert exceptional_by_a[3].module_dimension == 0
+    assert exceptional_by_a[3].jump_is_resolved
+    assert profile.jump_at(3) == 0
+
+
+def test_signature_profile_does_not_claim_coverage_at_t_one(
+    theta_one_q_five_data,
+):
+    r"""Completeness at nontrivial roots must not be confused with global data.
+
+    Yanagida's Theorems 1.2 and 1.3 both impose ``a != 0``.  Even though the
+    ``T(2,5)`` profile resolves all four nonzero fifth roots, asking for the
+    class ``a=0`` must retain that mathematical boundary rather than using
+    periodic reduction to fabricate a value at ``t=1``.
+    """
+    profile = yanagida_signature_profile(theta_one_q_five_data)
+    assert profile.is_complete_at_nontrivial_roots
+
+    with pytest.raises(ValueError, match="nonzero modulo n"):
+        profile.jump_at(0)
+    with pytest.raises(ValueError, match="nonzero modulo n"):
+        profile.jump_at(5)
+
+
+@pytest.mark.parametrize("bad_data", [None, "T(2,5)", (2, 5, (1, 4))])
+def test_signature_profile_requires_validated_matrix_data(bad_data):
+    r"""The profile needs exact ``Theta`` and ``Psi`` matrices, not raw labels."""
+    with pytest.raises(TypeError, match="YanagidaTorusData"):
+        yanagida_signature_profile(bad_data)
+
+
+def test_signature_profile_and_exceptional_records_are_immutable():
+    r"""Coverage cannot be mutated after downstream code has checked it."""
+    profile = yanagida_signature_profile(
+        YanagidaTorusData(3, 4, (0, 1, 3))
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        profile.exceptional_roots = ()
+    with pytest.raises(FrozenInstanceError):
+        profile.exceptional_roots[0].module_dimension = 0

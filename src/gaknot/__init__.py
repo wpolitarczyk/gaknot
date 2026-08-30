@@ -22,10 +22,13 @@ from .invariants.torus_twisted_blanchfield import (
 )
 from .invariants.torus_twisted_signature import (
     HermitianInertia,
+    YanagidaExceptionalRoot,
     YanagidaSignatureJump,
+    YanagidaSignatureProfile,
     exact_hermitian_inertia,
     yanagida_generic_signature_jumps,
     yanagida_local_signature_jump,
+    yanagida_signature_profile,
 )
 
 __all__ = [
@@ -47,8 +50,11 @@ __all__ = [
     'YanagidaLocalPairing',
     'canonical_bezout_coefficients',
     'HermitianInertia',
+    'YanagidaExceptionalRoot',
     'YanagidaSignatureJump',
+    'YanagidaSignatureProfile',
     'exact_hermitian_inertia',
     'yanagida_local_signature_jump',
     'yanagida_generic_signature_jumps',
+    'yanagida_signature_profile',
 ]

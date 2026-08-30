@@ -59,6 +59,21 @@ but equation (19) does not provide the pairing there, so this module does not
 guess the missing jumps.  Consequently :func:`yanagida_generic_signature_jumps`
 returns the complete collection of jumps supplied by Yanagida's theorem, not
 necessarily the complete twisted signature function.
+
+The coverage-aware :func:`yanagida_signature_profile` records exactly how
+much is missing.  At an exceptional nonzero root it uses ``Theta_b(a)`` to
+distinguish two cases.  If the local module vanishes, its jump is rigorously
+zero and no pairing formula is needed.  If the local module survives, the
+profile reports its dimension but leaves the jump unresolved.  This prevents
+later satellite code from silently replacing an unavailable pairing by the
+zero form.
+
+The root ``t=1`` (``a=0``) is deliberately not part of this profile.  Both of
+Yanagida's local theorems assume ``a != 0``, and the rational expression in
+equation (18) cannot by itself recover the ``(t-1)``-primary module: its
+denominator contains the homological correction factor ``1-t``.  Thus even a
+profile that is complete at every *nontrivial* ``n``-th root is not advertised
+as a complete global twisted signature function.
 """
 
 from dataclasses import dataclass, field
@@ -68,6 +83,7 @@ from sage.all import AA, I, Integer, QQ, QQbar, identity_matrix, matrix
 from gaknot.invariants.torus_twisted_blanchfield import (
     YanagidaTorusData,
     is_regular_at,
+    local_valuation,
 )
 
 
@@ -283,6 +299,225 @@ class YanagidaSignatureJump:
         )
 
 
+@dataclass(frozen=True)
+class YanagidaExceptionalRoot:
+    r"""Coverage data at one nonzero root excluded from Theorem 1.3.
+
+    A root ``a`` is exceptional when at least one character coordinate
+    satisfies ``b_i = -a`` modulo ``n``.  If ``k`` coordinates satisfy this
+    equality, equation (14) gives
+
+    ``rank(Theta_b(a)(zeta^a)) = k + 1``
+
+    and the localized module has dimension and length ``m - 1 - k``.  A zero
+    dimension means that the primary module itself vanishes, so its signature
+    jump is known to be zero despite the absence of a pairing formula.
+    Positive dimension means that Theorem 1.2 detects a genuine primary
+    module whose Hodge signs cannot be recovered from Theorem 1.3.
+    """
+
+    data: YanagidaTorusData = field(repr=False)
+    a: object
+    root: object = field(repr=False)
+    argument: object
+    character_multiplicity: object
+    module_dimension: object
+
+    def __post_init__(self):
+        if not isinstance(self.data, YanagidaTorusData):
+            raise TypeError("data must be a YanagidaTorusData object.")
+
+        # These records are public and immutable, so validate their numerical
+        # fields instead of relying solely on the factory that creates them.
+        for name in ("a", "character_multiplicity", "module_dimension"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, (int, Integer)):
+                raise TypeError(f"{name} must be an integer.")
+            object.__setattr__(self, name, Integer(value))
+
+        if self.a <= 0 or self.a >= self.data.n:
+            raise ValueError("a must lie in {1, ..., n-1}.")
+
+        actual_multiplicity = sum(
+            Integer(coordinate == (-self.a) % self.data.n)
+            for coordinate in self.data.b
+        )
+        if actual_multiplicity == 0:
+            raise ValueError("a is not exceptional for the character orbit.")
+        if self.character_multiplicity != actual_multiplicity:
+            raise ValueError(
+                "character_multiplicity does not match the character orbit."
+            )
+
+        expected_dimension = self.data.m - 1 - actual_multiplicity
+        if self.module_dimension != expected_dimension:
+            raise ValueError(
+                "module_dimension must equal m - 1 - character_multiplicity."
+            )
+        if self.root != self.data.zeta ** self.a:
+            raise ValueError("root must equal zeta^a.")
+        if self.argument != QQ(self.a) / self.data.n:
+            raise ValueError("argument must equal a/n.")
+
+    @property
+    def has_zero_module(self):
+        """Return whether Theorem 1.2 forces this local summand to vanish."""
+        return self.module_dimension == 0
+
+    @property
+    def jump_is_resolved(self):
+        """Return whether the jump is known without Theorem 1.3's pairing."""
+        return self.has_zero_module
+
+
+@dataclass(frozen=True)
+class YanagidaSignatureProfile:
+    r"""Exact jump coverage at all nontrivial ``n``-th roots.
+
+    ``generic_jumps`` contains the local Hodge-sign calculations supplied by
+    Theorem 1.3.  ``exceptional_roots`` contains every nonzero root excluded
+    from that theorem.  Exceptional roots with zero local module contribute a
+    known zero jump; those with positive module dimension remain unresolved.
+
+    The qualifier "at nontrivial roots" is essential.  This object does not
+    infer the missing ``(t-1)``-primary pairing and therefore does not pretend
+    to be a globally normalized twisted signature function.  It is intended
+    as a safe intermediate object for the Witt-class and satellite formulas:
+    callers can inspect coverage or require it before using any jump.
+    """
+
+    data: YanagidaTorusData = field(repr=False)
+    generic_jumps: tuple
+    exceptional_roots: tuple
+
+    def __post_init__(self):
+        if not isinstance(self.data, YanagidaTorusData):
+            raise TypeError("data must be a YanagidaTorusData object.")
+        if not isinstance(self.generic_jumps, tuple):
+            raise TypeError("generic_jumps must be a tuple.")
+        if not isinstance(self.exceptional_roots, tuple):
+            raise TypeError("exceptional_roots must be a tuple.")
+
+        generic_indices = []
+        for result in self.generic_jumps:
+            if not isinstance(result, YanagidaSignatureJump):
+                raise TypeError(
+                    "generic_jumps must contain YanagidaSignatureJump objects."
+                )
+            if result.data is not self.data:
+                raise ValueError("Every generic jump must refer to profile data.")
+            generic_indices.append(result.a)
+
+        exceptional_indices = []
+        for result in self.exceptional_roots:
+            if not isinstance(result, YanagidaExceptionalRoot):
+                raise TypeError(
+                    "exceptional_roots must contain YanagidaExceptionalRoot "
+                    "objects."
+                )
+            if result.data is not self.data:
+                raise ValueError(
+                    "Every exceptional root must refer to profile data."
+                )
+            exceptional_indices.append(result.a)
+
+        if generic_indices != sorted(generic_indices):
+            raise ValueError("generic_jumps must be ordered by a.")
+        if exceptional_indices != sorted(exceptional_indices):
+            raise ValueError("exceptional_roots must be ordered by a.")
+        if sorted(generic_indices + exceptional_indices) != list(
+            range(1, self.data.n)
+        ):
+            raise ValueError(
+                "The profile must cover every nontrivial n-th root exactly once."
+            )
+
+    @property
+    def zero_module_exceptional_roots(self):
+        """Return exceptional roots whose local module, hence jump, is zero."""
+        return tuple(
+            result for result in self.exceptional_roots
+            if result.has_zero_module
+        )
+
+    @property
+    def unresolved_exceptional_roots(self):
+        """Return roots carrying a module but no proved pairing formula."""
+        return tuple(
+            result for result in self.exceptional_roots
+            if not result.has_zero_module
+        )
+
+    @property
+    def is_complete_at_nontrivial_roots(self):
+        """Return whether every nonzero ``n``-th-root jump is determined."""
+        return not self.unresolved_exceptional_roots
+
+    @property
+    def known_jump_values(self):
+        r"""Return sorted ``(argument, jump)`` pairs for all resolved roots.
+
+        Generic roots contribute their calculated Hodge-sign sum.  A
+        zero-module exceptional root contributes an explicit zero.  Unresolved
+        roots are omitted rather than being assigned a guessed value.
+        """
+        generic_by_a = {
+            result.a: result.jump for result in self.generic_jumps
+        }
+        zero_exceptional = {
+            result.a for result in self.zero_module_exceptional_roots
+        }
+
+        values = []
+        for a in range(1, self.data.n):
+            a = Integer(a)
+            if a in generic_by_a:
+                values.append((QQ(a) / self.data.n, generic_by_a[a]))
+            elif a in zero_exceptional:
+                values.append((QQ(a) / self.data.n, Integer(0)))
+        return tuple(values)
+
+    def require_complete_at_nontrivial_roots(self):
+        r"""Return ``self`` or raise if any exceptional jump is unresolved."""
+        unresolved = tuple(
+            int(result.a) for result in self.unresolved_exceptional_roots
+        )
+        if unresolved:
+            raise NotImplementedError(
+                "Yanagida's Theorem 1.3 does not determine the pairing at "
+                f"nonzero roots a={unresolved}; their local modules are "
+                "nontrivial."
+            )
+        return self
+
+    def jump_at(self, a):
+        r"""Return a proved jump at a nonzero residue class modulo ``n``.
+
+        Integer lifts are reduced modulo ``n`` just as in
+        :meth:`YanagidaTorusData.local_model`.  At an unresolved exceptional
+        root the method raises instead of silently returning zero.
+        """
+        local = self.data.local_model(a)
+
+        if local.is_generic:
+            return next(
+                result.jump for result in self.generic_jumps
+                if result.a == local.a
+            )
+
+        exceptional = next(
+            result for result in self.exceptional_roots
+            if result.a == local.a
+        )
+        if exceptional.has_zero_module:
+            return Integer(0)
+        raise NotImplementedError(
+            "Yanagida's Theorem 1.3 does not determine the pairing at "
+            f"a={int(local.a)}; Theta detects a local module of dimension "
+            f"{int(exceptional.module_dimension)}."
+        )
+
+
 def yanagida_local_signature_jump(data, a):
     r"""Compute the twisted-signature jump at ``exp(2*pi*i*a/n)``.
 
@@ -404,3 +639,86 @@ def yanagida_generic_signature_jumps(data):
         if local.is_generic:
             results.append(yanagida_local_signature_jump(data, a))
     return tuple(results)
+
+
+def yanagida_signature_profile(data):
+    r"""Return exact signature-jump coverage at nontrivial ``n``-th roots.
+
+    The function computes Theorem 1.3's signature jump at every generic root.
+    At an exceptional root it specializes the presentation ``Theta_b(a)``
+    from Theorem 1.2.  If ``k`` character coordinates equal ``-a``, the code
+    verifies both of the identities
+
+    ``rank(Theta_b(a)(zeta^a)) = k + 1``
+
+    and
+
+    ``ord_(zeta^a)(det Theta_b(a)) = m - 1 - k``.
+
+    Equality of the determinant order with the specialized cokernel dimension
+    also proves that every surviving elementary divisor is first-order.  The
+    module is therefore zero exactly when ``k=m-1``.  In that case its jump is
+    zero; otherwise the profile records the unresolved positive dimension.
+
+    No claim is made at ``a=0`` because Yanagida's local module and pairing
+    theorems both exclude the root ``t=1``.
+    """
+    if not isinstance(data, YanagidaTorusData):
+        raise TypeError("data must be a YanagidaTorusData object.")
+
+    generic_jumps = []
+    exceptional_roots = []
+
+    for a in range(1, data.n):
+        local = data.local_model(a)
+        if local.is_generic:
+            generic_jumps.append(yanagida_local_signature_jump(data, a))
+            continue
+
+        character_multiplicity = sum(
+            Integer(coordinate == (-local.a) % data.n)
+            for coordinate in data.b
+        )
+        expected_dimension = data.m - 1 - character_multiplicity
+
+        theta_at_root = _specialize_regular_matrix(
+            local.theta,
+            local.root,
+            data.coefficient_field,
+        )
+        actual_rank = theta_at_root.rank()
+        if actual_rank != character_multiplicity + 1:
+            raise ArithmeticError(
+                "Exceptional Theta specialization has an unexpected rank."
+            )
+        actual_dimension = data.m - actual_rank
+        if actual_dimension != expected_dimension:
+            raise ArithmeticError(
+                "Exceptional Theta cokernel has an unexpected dimension."
+            )
+
+        # The cokernel dimension counts the number of nonunit elementary
+        # divisors, whereas the determinant valuation is their total length.
+        # Equality proves that each surviving divisor is exactly first-order.
+        module_length = local_valuation(local.theta.det(), local.root)
+        if module_length != expected_dimension:
+            raise ArithmeticError(
+                "Exceptional Theta determinant has an unexpected valuation."
+            )
+
+        exceptional_roots.append(
+            YanagidaExceptionalRoot(
+                data=data,
+                a=local.a,
+                root=local.root,
+                argument=QQ(local.a) / data.n,
+                character_multiplicity=character_multiplicity,
+                module_dimension=actual_dimension,
+            )
+        )
+
+    return YanagidaSignatureProfile(
+        data=data,
+        generic_jumps=tuple(generic_jumps),
+        exceptional_roots=tuple(exceptional_roots),
+    )
