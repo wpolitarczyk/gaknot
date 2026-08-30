@@ -212,6 +212,7 @@ from gaknot import (
     BranchedCoverHomology,
     Character,
     GeneralizedAlgebraicKnot,
+    iterated_torus_metabelian_signature_function,
     iterated_torus_metabelian_signature_jumps,
 )
 
@@ -249,6 +250,33 @@ Those roots appear in `unresolved_arguments`; they are never silently assigned
 jump zero. Use `total_profile.known_jump_at(x)` to inspect the proved part, or
 `total_profile.jump_at(x)` when a complete value is required. The latter raises
 `NotImplementedError` at a coverage gap.
+
+For a nontrivial prime-power-order character, the package can proceed one step
+further when `t=1` is the only unresolved root:
+
+```python
+signature = iterated_torus_metabelian_signature_function(
+    cable,
+    cable_character,
+)
+
+# The averaged twisted signature is normalized to vanish at t=1.
+print(signature(0))            # 0
+print(signature(QQ(1) / 10))   # 2
+
+# BCP-II, Theorem 4.14(b): this is sign_av_omega(tau)-sign_av_1(tau).
+print(signature.casson_gordon_signature_difference_at(QQ(1) / 10))  # -2
+```
+
+Theorem 4.14 proves that the corresponding metabelian Blanchfield form is
+representable. Its total signature jump is therefore zero, which determines
+the missing jump at `t=1` from the known nontrivial-root jumps; representability
+also gives the normalization `sigma_av(1)=0`. The returned diagnostic record
+retains the original coverage-aware jump result so that this inference remains
+visible. If Yanagida's formula leaves an exceptional nontrivial root unresolved,
+the function-level call still raises `NotImplementedError`: the zero-total-jump
+condition determines only the sum of missing contributions, not their separate
+locations.
 
 ### Casson--Gordon signatures of `(2,q)`-cables
 

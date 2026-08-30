@@ -26,11 +26,13 @@ import pytest
 from sage.all import QQ
 
 from gaknot import (
+    AveragedTwistedSignatureFunction,
     SignatureFunction,
     SignatureJumpGap,
     Theorem419SignatureResult,
     TwistedSignatureJumpProfile,
     YanagidaTorusData,
+    averaged_signature_from_representable_profile,
     classical_signature_jump_profile,
     theorem_4_19_signature_jumps,
     yanagida_signature_profile,
@@ -221,6 +223,140 @@ def test_jump_profiles_reject_inexact_or_ambiguous_arguments(bad_argument):
     r"""Root matching must never depend on floating-point approximations."""
     with pytest.raises(TypeError, match="exact rational"):
         TwistedSignatureJumpProfile(known_jumps=((bad_argument, 1),))
+
+
+# ---------------------------------------------------------------------------
+# Representability and globally normalized averaged signatures
+# ---------------------------------------------------------------------------
+
+def test_representability_completes_root_one_and_fixes_vertical_normalization():
+    r"""Recover the only missing jump and integrate it around the circle.
+
+    The synthetic profile has known half-jumps ``+1`` at ``1/4`` and ``-2``
+    at ``3/4``.  Their sum is ``-1``.  For a representable complex linking
+    form, the total sum of all half-jumps must be zero, so a gap confined to
+    ``t=1`` is forced to have weight ``+1``.
+
+    The averaged signature is then normalized by ``sigma_av(1)=0``.  Just to
+    the right of argument zero its value is ``+1``.  Crossing ``1/4`` changes
+    it by ``2*(+1)=2``, giving the regular value ``3``.  Crossing ``3/4``
+    changes it by ``2*(-2)=-4``, returning to ``-1`` before the final crossing
+    at one.  At either discontinuity the value is the average of those
+    one-sided limits.
+
+    This example deliberately uses a nonzero jump at one.  It would expose an
+    implementation that merely wrapped the data in the classical
+    ``SignatureFunction``, because that class does not carry the independent
+    vertical offset needed to make the averaged value at one equal zero.
+    """
+    partial = TwistedSignatureJumpProfile(
+        known_jumps=(
+            (QQ(1) / 4, 1),
+            (QQ(3) / 4, -2),
+        ),
+        unresolved=(SignatureJumpGap(
+            0,
+            reason="the local t=1 pairing is unavailable",
+            source="root-one test profile",
+        ),),
+        cover_degree=2,
+        label="representable example",
+    )
+
+    signature = averaged_signature_from_representable_profile(partial)
+
+    assert isinstance(signature, AveragedTwistedSignatureFunction)
+    assert signature.root_one_jump_inferred
+    assert signature.root_one_jump == 1
+    assert signature.total_jump == 0
+    assert signature.jump_profile.is_complete
+    assert signature.jump_profile.known_jumps == (
+        (QQ(0), 1),
+        (QQ(1) / 4, 1),
+        (QQ(3) / 4, -2),
+    )
+
+    # The root-one midpoint is the representable normalization.  Its two
+    # limits retain the nonzero local jump instead of being flattened to zero.
+    assert signature.left_limit(0) == -1
+    assert signature(0) == 0
+    assert signature.right_limit(0) == 1
+    assert signature(1) == 0
+
+    # Verify regular values and midpoint values on both arcs.  The evaluation
+    # arguments are exact rationals so there is no approximate root matching.
+    assert signature(QQ(1) / 8) == 1
+    assert signature.left_limit(QQ(1) / 4) == 1
+    assert signature(QQ(1) / 4) == 2
+    assert signature.right_limit(QQ(1) / 4) == 3
+    assert signature(QQ(1) / 2) == 3
+    assert signature.left_limit(QQ(3) / 4) == 3
+    assert signature(QQ(3) / 4) == 1
+    assert signature.right_limit(QQ(3) / 4) == -1
+    assert signature(QQ(7) / 8) == -1
+
+
+def test_complete_representable_profile_is_preserved_without_inference():
+    r"""Do not claim inference when every jump was supplied explicitly."""
+    complete = TwistedSignatureJumpProfile(
+        known_jumps=((QQ(0), 1), (QQ(1) / 3, -1)),
+        cover_degree=3,
+    )
+
+    signature = averaged_signature_from_representable_profile(complete)
+
+    assert signature.jump_profile is complete
+    assert not signature.root_one_jump_inferred
+    assert signature.total_jump == 0
+
+
+def test_representability_does_not_resolve_a_gap_away_from_root_one():
+    r"""A zero-total constraint cannot locate an unknown nontrivial jump.
+
+    Even if representability determines the sum of all missing contributions,
+    it does not determine the individual contribution at ``1/3``.  Therefore
+    the factory must preserve the package's coverage discipline and stop.
+    """
+    partial = TwistedSignatureJumpProfile(
+        unresolved=(
+            SignatureJumpGap(
+                0,
+                reason="unknown root-one contribution",
+                source="root one",
+            ),
+            SignatureJumpGap(
+                QQ(1) / 3,
+                reason="unknown exceptional contribution",
+                source="exceptional root",
+            ),
+        ),
+        cover_degree=3,
+    )
+
+    with pytest.raises(NotImplementedError, match="nontrivial arguments.*1/3"):
+        averaged_signature_from_representable_profile(partial)
+
+
+def test_complete_nonzero_total_jump_contradicts_representability():
+    r"""Reject complete data that violate the theorem used for normalization."""
+    inconsistent = TwistedSignatureJumpProfile(
+        known_jumps=((QQ(1) / 4, 1),),
+        cover_degree=2,
+    )
+
+    with pytest.raises(ValueError, match="total signature jump zero"):
+        averaged_signature_from_representable_profile(inconsistent)
+
+
+@pytest.mark.parametrize("bad_argument", [0.5, "1/2", None, True])
+def test_averaged_signature_evaluation_requires_exact_arguments(bad_argument):
+    r"""Evaluation uses the same exact-root contract as the jump profiles."""
+    signature = averaged_signature_from_representable_profile(
+        TwistedSignatureJumpProfile(cover_degree=2)
+    )
+
+    with pytest.raises(TypeError, match="exact rational"):
+        signature(bad_argument)
 
 
 # ---------------------------------------------------------------------------

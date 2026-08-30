@@ -35,15 +35,19 @@ from .invariants.torus_twisted_signature import (
     yanagida_signature_profile,
 )
 from .invariants.metabelian_satellite import (
+    AveragedTwistedSignatureFunction,
     SignatureJumpGap,
     Theorem419SignatureResult,
     TwistedSignatureJumpProfile,
+    averaged_signature_from_representable_profile,
     classical_signature_jump_profile,
     theorem_4_19_signature_jumps,
     yanagida_twisted_signature_jump_profile,
 )
 from .invariants.iterated_torus_twisted_signature import (
+    IteratedTorusMetabelianSignatureFunctionResult,
     IteratedTorusMetabelianSignatureResult,
+    iterated_torus_metabelian_signature_function,
     iterated_torus_metabelian_signature_jumps,
 )
 
@@ -75,12 +79,16 @@ __all__ = [
     'yanagida_local_signature_jump',
     'yanagida_generic_signature_jumps',
     'yanagida_signature_profile',
+    'AveragedTwistedSignatureFunction',
     'SignatureJumpGap',
     'TwistedSignatureJumpProfile',
     'Theorem419SignatureResult',
+    'averaged_signature_from_representable_profile',
     'classical_signature_jump_profile',
     'yanagida_twisted_signature_jump_profile',
     'theorem_4_19_signature_jumps',
+    'IteratedTorusMetabelianSignatureFunctionResult',
     'IteratedTorusMetabelianSignatureResult',
+    'iterated_torus_metabelian_signature_function',
     'iterated_torus_metabelian_signature_jumps',
 ]

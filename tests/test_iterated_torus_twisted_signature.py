@@ -34,11 +34,14 @@ import pytest
 from sage.all import QQ
 
 from gaknot import (
+    AveragedTwistedSignatureFunction,
     BranchedCoverHomology,
     Character,
     GeneralizedAlgebraicKnot,
+    IteratedTorusMetabelianSignatureFunctionResult,
     IteratedTorusMetabelianSignatureResult,
     TorusCharacterOrbit,
+    iterated_torus_metabelian_signature_function,
     iterated_torus_metabelian_signature_jumps,
 )
 from gaknot.invariants.LT_signature import LT_signature_iterated_torus_knot
@@ -191,6 +194,145 @@ def test_end_to_end_result_is_an_immutable_diagnostic_record():
 
     with pytest.raises(FrozenInstanceError):
         result.orbit = TorusCharacterOrbit(2, 5, (0,), (0, 0))
+
+
+# ---------------------------------------------------------------------------
+# From complete nontrivial jumps to the Casson--Gordon signature function
+# ---------------------------------------------------------------------------
+
+def test_common_two_cable_has_normalized_averaged_twisted_signature():
+    r"""Integrate the end-to-end jumps using Theorem 4.14's normalization.
+
+    The outer character has order five, so it is nontrivial and of prime-power
+    order.  BCP-II, Theorem 4.14(a), therefore makes the metabelian
+    Blanchfield form representable.  All six nontrivial-root jumps were
+    checked in the detailed routing test above and sum to zero.  Hence the
+    missing jump at ``t=1`` is also zero, and the averaged signature is
+    canonically normalized to vanish there.
+
+    Traversing the circle from zero, the successive half-jumps are
+
+    ``+1, -1, -1, +1, +1, -1``
+
+    at arguments ``1/30, 11/30, 2/5, 3/5, 19/30, 29/30``.  Each crossing
+    changes the regular value by twice that number.  The assertions sample
+    every constant arc and several discontinuity midpoints, making this a
+    genuine function-level test rather than another comparison of counters.
+    """
+    knot, _, character = _double_cable_nontrivial_character()
+
+    result = iterated_torus_metabelian_signature_function(knot, character)
+
+    assert isinstance(
+        result,
+        IteratedTorusMetabelianSignatureFunctionResult,
+    )
+    assert result.character_order == 5
+    assert result.cable_sequence == ((2, 3), (2, 5))
+    assert result.orbit.a_values == (4, 1)
+    assert isinstance(
+        result.signature_function,
+        AveragedTwistedSignatureFunction,
+    )
+
+    # The original calculation remains available for audit and still records
+    # Yanagida's local coverage limitation.  The normalized object records
+    # separately that representability, rather than a guessed local matrix,
+    # supplied its root-one jump.
+    assert result.jump_result.unresolved_arguments == (QQ(0),)
+    assert result.signature_function.root_one_jump_inferred
+    assert result.signature_function.root_one_jump == 0
+    assert result.jump_profile.is_complete
+    assert result.jump_profile.known_jumps == (
+        (QQ(1) / 30, 1),
+        (QQ(11) / 30, -1),
+        (QQ(2) / 5, -1),
+        (QQ(3) / 5, 1),
+        (QQ(19) / 30, 1),
+        (QQ(29) / 30, -1),
+    )
+
+    # Representable normalization and periodicity at t=1.
+    assert result(0) == 0
+    assert result(1) == 0
+
+    # One regular sample from each of the seven complementary arcs.
+    assert result(QQ(1) / 60) == 0
+    assert result(QQ(1) / 10) == 2
+    assert result(QQ(23) / 60) == 0
+    assert result(QQ(1) / 2) == -2
+    assert result(QQ(37) / 60) == 0
+    assert result(QQ(4) / 5) == 2
+    assert result(QQ(59) / 60) == 0
+
+    # At a root the averaged value lies halfway between the adjacent regular
+    # values.  The first and third crossings test positive and negative jumps.
+    assert result(QQ(1) / 30) == 1
+    assert result(QQ(2) / 5) == -1
+
+    # Theorem 4.14(b): the Casson--Gordon signature difference is -sigma_av.
+    assert result.casson_gordon_signature_difference_at(QQ(1) / 2) == 2
+
+
+def test_signature_function_requires_a_nontrivial_character():
+    r"""Do not invoke Theorem 4.14 for the order-one character.
+
+    The jump-level calculation intentionally accepts the zero character, as
+    tested below, because its satellite decomposition is still meaningful.
+    The function-level normalization is stricter: the theorem used to prove
+    representability explicitly assumes a nontrivial character.
+    """
+    knot = GeneralizedAlgebraicKnot.iterated_torus_knot(
+        [(2, 3), (2, 5)]
+    )
+    character = Character(BranchedCoverHomology(knot, 2), [[[0], []]])
+
+    with pytest.raises(ValueError, match="nontrivial character.*order one"):
+        iterated_torus_metabelian_signature_function(knot, character)
+
+
+def test_signature_function_requires_prime_power_character_order():
+    r"""Distinguish character order from the containing cyclic modulus.
+
+    The double cover of ``T(2,15)`` has a ``Z/15Z`` summand, and sending its
+    generator to ``1/15`` gives a genuinely order-fifteen character.  Although
+    the jump formulas can be evaluated, fifteen is not a prime power, so the
+    current proof of representability cannot be applied to normalize a
+    Casson--Gordon twisted signature function.
+    """
+    knot = GeneralizedAlgebraicKnot.torus_knot(2, 15)
+    character = Character(
+        BranchedCoverHomology(knot, 2),
+        [[[QQ(1) / 15]]],
+    )
+
+    with pytest.raises(ValueError, match="prime-power-order.*order 15"):
+        iterated_torus_metabelian_signature_function(knot, character)
+
+
+def test_representability_cannot_fill_exceptional_nontrivial_roots():
+    r"""Retain Yanagida coverage gaps even for a prime-power character.
+
+    The order-four character on the outer ``T(3,4)`` layer satisfies the
+    number-theoretic hypothesis of Theorem 4.14.  Representability determines
+    the *sum* of all jumps, but the local contributions at ``1/4`` and ``3/4``
+    remain individually unknown.  Since a signature function needs both
+    discontinuities separately, the high-level call must stop rather than use
+    the zero-total equation twice.
+    """
+    knot = GeneralizedAlgebraicKnot.iterated_torus_knot(
+        [(3, 2), (3, 4)]
+    )
+    character = Character(
+        BranchedCoverHomology(knot, 3),
+        [[[QQ(1) / 4, 0], []]],
+    )
+
+    with pytest.raises(
+        NotImplementedError,
+        match=r"nontrivial arguments.*1/4.*3/4",
+    ):
+        iterated_torus_metabelian_signature_function(knot, character)
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,8 @@ signatures II: Relation to Casson--Gordon invariants*.  The theorem describes
 the metabelian Blanchfield pairing of a satellite ``P(K, eta)`` as a direct sum
 of a pattern form and explicitly reparametrized companion forms.
 
-Why this module stores jumps rather than a ``SignatureFunction``
-----------------------------------------------------------------
+Why this module first stores jumps
+----------------------------------
 
 The Witt class of a complex linking form is determined by its signature
 jumps.  Direct sum therefore adds jumps, while replacing ``t`` by
@@ -17,11 +17,12 @@ jumps.  Direct sum therefore adds jumps, while replacing ``t`` by
 
 ``theta |-> phi + d*theta  (mod 1)``.
 
-This is exactly the algebra needed by Theorem 4.19.  It is not yet enough to
-construct the globally normalized twisted signature function: Yanagida's
-formula may leave the pairing at ``t=1`` or at exceptional roots unresolved.
-The class :class:`TwistedSignatureJumpProfile` consequently stores two kinds
-of information separately:
+This is exactly the algebra needed by Theorem 4.19.  On its own it is not
+always enough to construct the globally normalized twisted signature
+function: Yanagida's formula may leave the pairing at ``t=1`` or at
+exceptional roots unresolved.  The class
+:class:`TwistedSignatureJumpProfile` consequently stores two kinds of
+information separately:
 
 * exact, known jump weights; and
 * explicit gaps at roots where a local module survives but its pairing has
@@ -30,6 +31,15 @@ of information separately:
 Unknown contributions are never replaced by zero.  They remain attached to
 their roots under direct sums and are pulled back to every preimage under a
 phase/power substitution.
+
+There is one important situation in which the missing root at ``t=1`` can be
+recovered without calculating another local pairing.  A representable complex
+linking form has total signature jump zero and its averaged signature is
+normalized to vanish at ``t=1``.  Therefore, if ``t=1`` is the *only* gap,
+its jump is the negative of the sum of all known jumps.  The factory
+:func:`averaged_signature_from_representable_profile` performs precisely this
+deduction and returns an :class:`AveragedTwistedSignatureFunction`.  It still
+refuses profiles with a gap anywhere else on the circle.
 
 The three cases of Theorem 4.19
 -------------------------------
@@ -343,6 +353,182 @@ class TwistedSignatureJumpProfile:
             cover_degree=self.cover_degree,
             label=label,
         )
+
+
+@dataclass(frozen=True)
+class AveragedTwistedSignatureFunction:
+    r"""A globally normalized averaged signature of a representable form.
+
+    The completed :attr:`jump_profile` contains every half-jump ``delta`` and
+    must satisfy
+
+    ``sum_(xi in S^1) delta(xi) = 0``.
+
+    This is the representability condition from Corollary 5.15 of
+    Borodzik--Conway--Politarczyk I.  Property (S-5) in that paper also fixes
+    the additive constant of the averaged function by
+
+    ``sigma_av(1) = 0``.
+
+    Write ``delta_1`` for the jump at argument zero, which represents the root
+    ``t=1``.  At ``x`` strictly between zero and one the resulting midpoint
+    value is
+
+    ``delta_1 + 2*sum_(0<y<x) delta(y) + delta(x)``.
+
+    The one-sided limits differ by ``2*delta(x)``.  At argument zero their
+    average is zero, as required, even when ``delta_1`` itself is nonzero.
+    This vertical normalization is why the class is separate from the
+    classical :class:`SignatureFunction`, whose knots have no jump at one and
+    therefore need no independent additive constant.
+
+    ``root_one_jump_inferred`` records whether the factory recovered the
+    ``t=1`` jump from representability.  It is diagnostic provenance, not an
+    additional mathematical assumption made by this class.
+    """
+
+    jump_profile: TwistedSignatureJumpProfile = field(repr=False)
+    root_one_jump_inferred: bool = False
+
+    def __post_init__(self):
+        if not isinstance(self.jump_profile, TwistedSignatureJumpProfile):
+            raise TypeError(
+                "jump_profile must be a TwistedSignatureJumpProfile object."
+            )
+        if not self.jump_profile.is_complete:
+            raise ValueError(
+                "An averaged twisted signature requires a complete jump profile."
+            )
+        if not isinstance(self.root_one_jump_inferred, bool):
+            raise TypeError("root_one_jump_inferred must be a boolean.")
+
+        total_jump = sum(
+            (weight for _, weight in self.jump_profile.known_jumps),
+            Integer(0),
+        )
+        if total_jump != 0:
+            raise ValueError(
+                "A representable twisted linking form must have total "
+                "signature jump zero."
+            )
+
+    @property
+    def jumps_counter(self):
+        """Return a defensive counter containing every completed half-jump."""
+        return self.jump_profile.known_counter
+
+    @property
+    def total_jump(self):
+        """Return the sum of the completed jump weights, necessarily zero."""
+        return sum(self.jumps_counter.values(), Integer(0))
+
+    @property
+    def root_one_jump(self):
+        """Return the completed half-jump at ``t=1`` (argument zero)."""
+        return self.jumps_counter[QQ(0)]
+
+    def jump_at(self, argument):
+        """Return the completed half-jump at an exact rational argument."""
+        return self.jump_profile.jump_at(argument)
+
+    def left_limit(self, argument):
+        r"""Return the limit approached counterclockwise from below.
+
+        At argument zero this means the limit near ``1`` from the end of the
+        fundamental interval.  Representability and zero total jump make it
+        ``-delta_1``.  Away from zero, integration starts with the right-hand
+        value ``delta_1`` immediately after crossing ``t=1``.
+        """
+        argument = _validated_argument(argument)
+        delta_one = self.root_one_jump
+        if argument == 0:
+            return -delta_one
+        return delta_one + 2 * sum(
+            (
+                weight
+                for root_argument, weight in self.jump_profile.known_jumps
+                if 0 < root_argument < argument
+            ),
+            Integer(0),
+        )
+
+    def right_limit(self, argument):
+        """Return the limit immediately after crossing ``argument``."""
+        argument = _validated_argument(argument)
+        return self.left_limit(argument) + 2 * self.jump_at(argument)
+
+    def __call__(self, argument):
+        r"""Evaluate the averaged signature using the midpoint convention."""
+        argument = _validated_argument(argument)
+        return (
+            self.left_limit(argument) + self.right_limit(argument)
+        ) / 2
+
+
+def averaged_signature_from_representable_profile(profile):
+    r"""Complete ``t=1`` and normalize a representable twisted signature.
+
+    Args:
+        profile: A :class:`TwistedSignatureJumpProfile` known independently to
+            arise from a representable complex linking form.  It may already
+            be complete, or all of its gaps may lie at argument zero.
+
+    Returns:
+        An :class:`AveragedTwistedSignatureFunction`.  If argument zero was
+        unresolved, its aggregate jump is inferred as the negative sum of all
+        known jumps.  A zero inferred jump is valid and is removed by the
+        profile's ordinary sparse normalization.
+
+    Raises:
+        TypeError: If ``profile`` has the wrong type.
+        NotImplementedError: If any unresolved local contribution occurs away
+            from ``t=1``.  Representability determines only the *total* jump
+            and cannot separate such missing contributions root by root.
+        ValueError: If a profile that already claims completeness has nonzero
+            total jump and therefore contradicts the representability
+            hypothesis.
+
+    The factory does not attempt to prove representability from raw jump data.
+    Its caller must establish that hypothesis, for example from Theorem 4.14
+    for a nontrivial prime-power-order Casson--Gordon character.
+    """
+    if not isinstance(profile, TwistedSignatureJumpProfile):
+        raise TypeError(
+            "profile must be a TwistedSignatureJumpProfile object."
+        )
+
+    nontrivial_gaps = tuple(
+        gap for gap in profile.unresolved if gap.argument != 0
+    )
+    if nontrivial_gaps:
+        arguments = tuple(sorted({gap.argument for gap in nontrivial_gaps}))
+        raise NotImplementedError(
+            "Cannot construct the averaged twisted signature while local "
+            f"jumps remain unresolved at nontrivial arguments {arguments}."
+        )
+
+    root_one_gaps = tuple(
+        gap for gap in profile.unresolved if gap.argument == 0
+    )
+    if not root_one_gaps:
+        return AveragedTwistedSignatureFunction(profile)
+
+    inferred_root_one_jump = -sum(
+        (weight for _, weight in profile.known_jumps),
+        Integer(0),
+    )
+    completed_profile = TwistedSignatureJumpProfile(
+        known_jumps=profile.known_jumps + (
+            (QQ(0), inferred_root_one_jump),
+        ),
+        unresolved=(),
+        cover_degree=profile.cover_degree,
+        label=profile.label,
+    )
+    return AveragedTwistedSignatureFunction(
+        completed_profile,
+        root_one_jump_inferred=True,
+    )
 
 
 def classical_signature_jump_profile(signature, *, label=""):
