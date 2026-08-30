@@ -386,6 +386,74 @@ also be a pytest node id, for example
 `tests/test_character.py::test_character_values_are_defensively_copied`, when
 only one test function should run.
 
+## Bibliography
+
+The following papers are the primary mathematical references for the
+calculations implemented in `gaknot`. The notes after each entry record the
+specific role of the paper in the package; this is not intended as an
+exhaustive bibliography of Casson--Gordon theory or knot signatures.
+
+- **[MP23]** Maria Marchwicka and Wojciech Politarczyk,
+  *On the slice genus of generalized algebraic knots*, Journal of Knot Theory
+  and Its Ramifications **32** (2023), no. 12, article 2350085.
+  [[journal](https://doi.org/10.1142/S0218216523500852)]
+  [[arXiv:2107.11299](https://arxiv.org/abs/2107.11299)]
+
+  This is the source for the GA-knot family studied by the project, the
+  supported Casson--Gordon cabling calculations, and the genus-obstruction
+  search reproduced by the regression suite.
+
+- **[BCP-I]** Maciej Borodzik, Anthony Conway, and Wojciech Politarczyk,
+  *Twisted Blanchfield pairings and twisted signatures I: Algebraic
+  background*, Linear Algebra and its Applications **655** (2022), 236--290.
+  [[journal](https://doi.org/10.1016/j.laa.2022.09.011)]
+  [[arXiv:2111.10632](https://arxiv.org/abs/2111.10632)]
+
+  This paper supplies the algebraic classification of real and complex
+  linking forms, their Hodge numbers, and the signature-jump formalism used by
+  the coverage-aware twisted-signature profiles.
+
+- **[BCP-II]** Maciej Borodzik, Anthony Conway, and Wojciech Politarczyk,
+  *Twisted Blanchfield pairings and twisted signatures II: Relation to
+  Casson--Gordon invariants*, Journal of the Institute of Mathematics of
+  Jussieu **24** (2025), 1139--1195.
+  [[journal](https://doi.org/10.1017/S1474748024000458)]
+  [[arXiv:1809.08791](https://arxiv.org/abs/1809.08791)]
+
+  This paper defines the twisted signature functions used here, relates the
+  metabelian case to Casson--Gordon invariants, and provides the satellite
+  decomposition implemented from Theorem 4.19.
+
+- **[BCP-III]** Maciej Borodzik, Anthony Conway, and Wojciech Politarczyk,
+  *Twisted Blanchfield pairings and twisted signatures III: Applications*,
+  Glasgow Mathematical Journal **66** (2024), no. 3, 501--540.
+  [[journal](https://doi.org/10.1017/S0017089524000077)]
+  [[arXiv:2111.10631](https://arxiv.org/abs/2111.10631)]
+
+  This paper supplies the algorithm that extracts twisted signature jumps
+  from primary twisted Blanchfield pairings and gives the explicit torus-knot
+  calculations and applications that guide the implementation.
+
+- **[CKP23]** Anthony Conway, Min Hoon Kim, and Wojciech Politarczyk,
+  *Non-slice linear combinations of iterated torus knots*, Algebraic &
+  Geometric Topology **23** (2023), 765--802.
+  [[journal](https://doi.org/10.2140/agt.2023.23.765)]
+  [[arXiv:1910.01368](https://arxiv.org/abs/1910.01368)]
+
+  This paper is the source for the concrete metabelian character orbits and
+  the fixed twisted Alexander polynomial representative used for positive
+  torus knots, including Proposition 3.3.
+
+- **[Y26]** Koki Yanagida,
+  *Blanchfield pairings and twisted Blanchfield pairings of torus knots*,
+  preprint (2026).
+  [[arXiv:2602.07575v2](https://arxiv.org/abs/2602.07575v2)]
+
+  Yanagida's Theorems 1.2 and 1.3 provide the explicit local presentation and
+  pairing matrices used for the torus-pattern contribution. The implementation
+  also records exactly the trivial and exceptional roots not covered by those
+  formulas.
+
 ## Further documentation
 
 The `.sage` source files contain detailed module and API docstrings. The most
@@ -402,7 +470,7 @@ useful entry points are:
 - [the test suite](tests/), which includes mathematical examples, validation
   rules, and regression cases.
 
-## Authors and contributions
+## Authors, contributions, and AI-assisted development
 
 This project originated in the collaboration between **Wojciech Politarczyk**
 and **Maria Marchwicka** surrounding their joint work on generalized algebraic
@@ -415,8 +483,20 @@ function and plotting implementation and most of the historical large-cable
 calculation code retained in `src/gaknot/legacy/`.
 
 Wojciech supplied the mathematical formulas used by the original programs and
-has subsequently reorganized the code into the current package, implemented
-the newer invariant modules and tests, and maintained the project.
+has subsequently directed the reorganization of the code into the current
+package, the implementation of the newer invariant modules and tests, and the
+continued maintenance of the project.
+
+Much of this recent reorganization and extension of the package--in
+particular, the new invariant implementations, regression tests, and expanded
+documentation--was produced with **OpenAI Codex**. Codex generated and revised
+code and tests through an iterative process supervised by Wojciech. Wojciech
+provided the mathematical formulas and requirements, determined the scope and
+design of the work, checked the mathematical interpretations, reviewed the
+proposed changes and test results, and decided which changes to accept and
+commit. The recent work should therefore be understood as **AI-assisted
+software development** carried out **under Wojciech's mathematical direction
+and supervision**, rather than as code authored by him alone.
 
 **Mateusz Kujawski** later contributed code for signature calculations,
 convention alignment, and generation of algebraically slice knot examples.
