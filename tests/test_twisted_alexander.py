@@ -11,6 +11,10 @@ from sage.all import QQ, CyclotomicField, PolynomialRing
 
 from gaknot import GeneralizedAlgebraicKnot, BranchedCoverHomology
 from gaknot.invariants.character import Character
+from gaknot.invariants.torus_character import (
+    TorusCharacterOrbit,
+    torus_character_orbit,
+)
 from gaknot.invariants.twisted_alexander import twisted_alexander_torus_knot
 
 
@@ -25,6 +29,87 @@ def _parse_expected_representative(q, expression):
     coefficient_field = CyclotomicField(q)
     polynomial_ring = PolynomialRing(coefficient_field, 't')
     return polynomial_ring.fraction_field()(expression)
+
+
+# --- Shared character-orbit conversion --------------------------------------
+
+# The twisted Alexander denominator, Yanagida's matrices, and the satellite
+# phase shifts must all use the same cyclic ordering of the character orbit.
+# These tests therefore exercise the extracted basis-conversion helper
+# directly, in addition to the polynomial regression tests below.  A cyclic
+# rotation often describes an isomorphic representation, but the public API
+# promises a deterministic representative, so exact tuple equality matters.
+@pytest.mark.parametrize(
+    "p, q, generator_values, expected_orbit",
+    [
+        (2, 3, [QQ(1) / 3], (2, 1)),
+        (2, 5, [QQ(1) / 5], (4, 1)),
+        (3, 4, [QQ(1) / 4, 0], (3, 1, 0)),
+        (3, 5, [QQ(1) / 5, QQ(2) / 5], (1, 2, 2)),
+    ],
+)
+def test_torus_character_orbit_uses_the_historical_smith_basis_order(
+    p, q, generator_values, expected_orbit
+):
+    """Recover exact deck-orbit coordinates from Smith-generator values.
+
+    The inputs are character images in the public homology basis.  The
+    expected outputs were already implicit in the exact twisted Alexander
+    representatives tested later in this file.  Isolating them here makes the
+    basis change itself observable and allows the signature code to reuse it
+    without reverse-engineering a polynomial denominator.
+    """
+    orbit = torus_character_orbit(p, q, generator_values)
+
+    assert isinstance(orbit, TorusCharacterOrbit)
+    assert orbit.p == p
+    assert orbit.q == q
+    assert orbit.generator_values == tuple(generator_values)
+    assert orbit.a_values == expected_orbit
+
+    # The determinant/deck-orbit relation is exact in Z/qZ.  Phase arguments
+    # are exact rational numbers, never floating approximations to roots of
+    # unity, and preserve the same order as the integer orbit.
+    assert sum(orbit.a_values) % q == 0
+    assert orbit.phase_arguments == tuple(QQ(a) / q for a in expected_orbit)
+
+
+def test_torus_character_orbit_normalizes_character_and_orbit_representatives():
+    """Normalize two equivalent descriptions without changing their classes."""
+    # 6/5 and 1/5 define the same element of Q/Z.  The computed orbit is also
+    # returned in the canonical integer range 0,...,q-1.
+    orbit = torus_character_orbit(2, 5, [QQ(6) / 5])
+
+    assert orbit.generator_values == (QQ(1) / 5,)
+    assert orbit.a_values == (4, 1)
+    assert all(0 <= value < 5 for value in orbit.a_values)
+
+
+def test_torus_character_orbit_of_zero_character_is_zero():
+    """Check that every deck translate evaluates trivially under chi=0."""
+    orbit = torus_character_orbit(5, 2, [0, 0, 0, 0])
+
+    assert orbit.a_values == (0, 0, 0, 0, 0)
+    assert orbit.phase_arguments == (0, 0, 0, 0, 0)
+
+
+@pytest.mark.parametrize(
+    "p, q, generator_values, error_type, message",
+    [
+        (True, 5, [0], TypeError, "p must be an integer"),
+        (1, 5, [], ValueError, "p must be greater than one"),
+        (2, 4, [0], ValueError, "p and q must be relatively prime"),
+        (3, 4, [0], ValueError, "exactly p-1=2 entries"),
+        (2, 5, [0.2], TypeError, "exact rational number"),
+        (2, 5, [QQ(1) / 3], ValueError, "q-torsion"),
+    ],
+)
+def test_torus_character_orbit_rejects_incompatible_public_data(
+    p, q, generator_values, error_type, message
+):
+    """Reject malformed coordinates before they enter a matrix computation."""
+    with pytest.raises(error_type, match=message):
+        torus_character_orbit(p, q, generator_values)
 
 
 # --- Exact formula for the trivial character ---------------------------------

@@ -95,6 +95,22 @@ def test_jump_profile_returns_a_defensive_counter():
     assert profile.jump_at(QQ(1) / 5) == -1
 
 
+def test_jump_profile_accepts_exact_integral_sage_rational_weights():
+    """Treat ``QQ(-1)`` as the integer weight it represents exactly.
+
+    The elementary Levine--Tristram formula can return a Sage ``Rational``
+    with denominator one when ``(-1)`` is obtained from a negative exponent.
+    The metabelian profile should normalize that harmless representation detail
+    rather than reject a mathematically integral classical signature jump.
+    """
+    profile = TwistedSignatureJumpProfile(
+        known_jumps=((QQ(1) / 6, QQ(-1)),),
+        cover_degree=2,
+    )
+
+    assert profile.known_jumps == ((QQ(1) / 6, -1),)
+
+
 def test_direct_sum_cancels_known_terms_but_never_unknown_terms():
     r"""Two unknown contributions cannot be cancelled before computing them.
 

@@ -87,6 +87,25 @@ def _validated_integer(value, name, *, positive=False, nonzero=False):
     return value
 
 
+def _validated_jump_weight(value):
+    """Return an exact integral jump weight as a Sage ``Integer``.
+
+    ``LT_signature`` can produce the exact Sage rational ``QQ(-1)`` when a
+    negative exponent is evaluated, even though its mathematical value is an
+    integer.  Accept exact rationals with denominator one while continuing to
+    reject nonintegral or floating-point weights.
+    """
+    if isinstance(value, (bool, float, complex, str)) or value is None:
+        raise TypeError("jump weight must be an integer.")
+    try:
+        rational_value = QQ(value)
+    except (TypeError, ValueError):
+        raise TypeError("jump weight must be an integer.") from None
+    if not rational_value.is_integer():
+        raise TypeError("jump weight must be an integer.")
+    return Integer(rational_value)
+
+
 def _validated_argument(value, name="argument"):
     r"""Return an exact rational representative in the interval ``[0,1)``.
 
@@ -174,7 +193,7 @@ class TwistedSignatureJumpProfile:
                     "Every known jump must be an (argument, weight) pair."
                 )
             argument = _validated_argument(entry[0])
-            weight = _validated_integer(entry[1], "jump weight")
+            weight = _validated_jump_weight(entry[1])
             counter[argument] += weight
 
         normalized_jumps = tuple(sorted(

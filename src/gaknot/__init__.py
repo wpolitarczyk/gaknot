@@ -20,6 +20,10 @@ from .invariants.torus_twisted_blanchfield import (
     YanagidaTorusData,
     canonical_bezout_coefficients,
 )
+from .invariants.torus_character import (
+    TorusCharacterOrbit,
+    torus_character_orbit,
+)
 from .invariants.torus_twisted_signature import (
     HermitianInertia,
     YanagidaExceptionalRoot,
@@ -37,6 +41,10 @@ from .invariants.metabelian_satellite import (
     classical_signature_jump_profile,
     theorem_4_19_signature_jumps,
     yanagida_twisted_signature_jump_profile,
+)
+from .invariants.iterated_torus_twisted_signature import (
+    IteratedTorusMetabelianSignatureResult,
+    iterated_torus_metabelian_signature_jumps,
 )
 
 __all__ = [
@@ -57,6 +65,8 @@ __all__ = [
     'YanagidaLocalModel',
     'YanagidaLocalPairing',
     'canonical_bezout_coefficients',
+    'TorusCharacterOrbit',
+    'torus_character_orbit',
     'HermitianInertia',
     'YanagidaExceptionalRoot',
     'YanagidaSignatureJump',
@@ -71,4 +81,6 @@ __all__ = [
     'classical_signature_jump_profile',
     'yanagida_twisted_signature_jump_profile',
     'theorem_4_19_signature_jumps',
+    'IteratedTorusMetabelianSignatureResult',
+    'iterated_torus_metabelian_signature_jumps',
 ]

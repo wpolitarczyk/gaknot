@@ -1,5 +1,6 @@
-from sage.all import ZZ, CyclotomicField, PolynomialRing, matrix, Integer
-from gaknot.utils.utility import alexander_polynomial_torus_knot
+from sage.all import CyclotomicField, PolynomialRing
+
+from gaknot.invariants.torus_character import torus_character_orbit
 
 
 def twisted_alexander_torus_knot(knot, character):
@@ -64,54 +65,13 @@ def twisted_alexander_torus_knot(knot, character):
             f"expected p={p}."
         )
 
-    # The companion matrix C presents multiplication by the Alexander-module
-    # variable in the standard basis determined by Delta_{T(p,q)}.  The
-    # polynomial is monic, so its coefficients determine the final column.
-    Delta = alexander_polynomial_torus_knot(p, q)
-    d = Delta.degree()
-    coeffs = Delta.list()
-
-    C = matrix(ZZ, d, d)
-    for i in range(d - 1):
-        C[i + 1, i] = 1
-    for i in range(d):
-        C[i, d - 1] = -coeffs[i]
-
-    # Passing to the p-fold branched cover imposes C^p = I.  Thus its first
-    # homology is the cokernel of M = C^p - I.  Smith form supplies matrices
-    # with U*M*V = D, and U converts a vector from the companion basis to the
-    # diagonal presentation used by BranchedCoverHomologyElement.
-    M = (C ** p) - matrix.identity(ZZ, d)
-    D, U, _ = M.smith_form()
-
-    # A diagonal entry 1 presents a trivial cyclic summand and has no
-    # coordinate in the public homology representation.  Retain precisely the
-    # Smith coordinates belonging to nontrivial summands.
-    diag = D.diagonal()
-    idx_factors = [i for i, f in enumerate(diag) if f != 1]
-
-    # In the notation of Proposition 3.3, x_0 is represented by the first
-    # companion-basis vector and x_j = C^j*x_0.  Evaluating chi around this
-    # p-element deck-transformation orbit produces a_0, ..., a_{p-1} in Z/qZ.
-    a_values = []
-    orbit_vector = matrix(ZZ, d, 1)
-    orbit_vector[0, 0] = 1
-
-    for _ in range(p):
-        # Project the current x_j to the Smith basis and discard coordinates
-        # belonging to the trivial diagonal factors.
-        coords = U * orbit_vector
-        gen_values = [coords[i, 0] for i in idx_factors]
-
-        # A basic torus knot has one connected-sum component and one layer, so
-        # [[gen_values]] is the nested form of this homology element.  Since
-        # chi(x_j) is q-torsion, q*chi(x_j) is the integer representative a_j.
-        element = h1.element([[gen_values]])
-        character_value = character(element)
-        a_values.append(Integer(character_value * q))
-
-        # Advance once around the orbit: x_{j+1} = C*x_j.
-        orbit_vector = C * orbit_vector
+    # The same orbit is used by the twisted Alexander formula, Yanagida's
+    # pairing matrices, and the satellite phase shifts.  Delegate the basis
+    # conversion to one shared implementation so all three calculations use
+    # exactly the same cyclic ordering.  A one-layer torus knot has one copy of
+    # its outer layer, hence the two indices below are structurally forced.
+    generator_values = character.restrict_to_layer(0, 0)[0]
+    orbit = torus_character_orbit(p, q, generator_values)
 
     # Proposition 3.3 lives in the rational-function field Q(zeta_q)(t).
     K = CyclotomicField(q)
@@ -122,7 +82,7 @@ def twisted_alexander_torus_knot(knot, character):
     # Assemble (1 - t^q)^(p-1) / product_j(t*zeta_q^(a_j) - 1).
     numerator = (1 - t ** q) ** (p - 1)
     denominator = R(1)
-    for a in a_values:
+    for a in orbit.a_values:
         denominator *= (t * zeta ** a - 1)
 
     # Preserve the representative selected by the displayed formula.  In

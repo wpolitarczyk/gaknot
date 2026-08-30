@@ -15,8 +15,11 @@ The package currently provides:
   structural coordinates;
 - characters on the torsion of branched-cover homology;
 - Casson--Gordon signatures and nullities for supported `(2,q)`-cable sums;
-- Gilmer four-genus obstruction searches with explicit witnesses; and
-- metabelian twisted Alexander polynomials for supported positive torus knots.
+- Gilmer four-genus obstruction searches with explicit witnesses;
+- metabelian twisted Alexander polynomials for supported positive torus knots;
+  and
+- coverage-aware metabelian twisted signature jumps for positive common-`p`
+  iterated torus knots.
 
 The project was created as part of the proof of the main lemma in
 **"On the slice genus of generalized algebraic knots"** by Maria Marchwicka
@@ -188,6 +191,65 @@ The twisted Alexander calculation is currently restricted to positive,
 single-summand torus knots, and the character must be defined on the
 `p`-fold cover of `T(p,q)`.
 
+### Metabelian signature jumps of common-`p` iterated torus knots
+
+The first end-to-end twisted-signature interface supports one positive
+iterated torus knot whose cabling layers have a common first parameter:
+
+```text
+T(p,q_1; p,q_2; ...; p,q_l).
+```
+
+The character must be defined on the `p`-fold branched cover. The knot
+description is ordered from the innermost companion to the outermost pattern,
+whereas character values follow the homology decomposition from the outermost
+layer inward. For example, the double cover of `T(2,3;2,5)` has one outer
+`Z/5Z` generator and no inner character coordinates:
+
+```python
+from sage.all import QQ
+from gaknot import (
+    BranchedCoverHomology,
+    Character,
+    GeneralizedAlgebraicKnot,
+    iterated_torus_metabelian_signature_jumps,
+)
+
+cable = GeneralizedAlgebraicKnot.iterated_torus_knot(
+    [(2, 3), (2, 5)]
+)
+cable_h1 = BranchedCoverHomology(cable, 2)
+cable_character = Character(
+    cable_h1,
+    [[[QQ(1) / 5], []]],
+)
+
+twisted = iterated_torus_metabelian_signature_jumps(
+    cable,
+    cable_character,
+)
+
+print(twisted.orbit.a_values)          # (4, 1)
+print(twisted.orbit.phase_arguments)   # (4/5, 1/5)
+print(twisted.satellite_result.case)   # ordinary_companion
+print(twisted.unresolved_arguments)    # (0,)
+```
+
+The computation converts the outer Smith-basis character to its exact deck
+orbit, applies Yanagida's torus-pattern formulas, and then applies the
+divisible-winding branch of Theorem 4.19. The inner iterated torus knot enters
+through its ordinary Levine--Tristram signature at each phase selected by the
+orbit.
+
+The returned object records signature *jumps*, not a globally normalized full
+twisted signature function. It separates proved jumps from unresolved local
+contributions. In particular, Yanagida's formulas exclude `t=1`, and some
+characters also produce positive-dimensional exceptional primary modules.
+Those roots appear in `unresolved_arguments`; they are never silently assigned
+jump zero. Use `total_profile.known_jump_at(x)` to inspect the proved part, or
+`total_profile.jump_at(x)` when a complete value is required. The latter raises
+`NotImplementedError` at a coverage gap.
+
 ### Casson--Gordon signatures of `(2,q)`-cables
 
 For an odd prime `q`, the package implements the double-cover cabling formula
@@ -323,6 +385,8 @@ useful entry points are:
 - [signature functions and plotting](src/gaknot/invariants/signature.sage);
 - [branched-cover homology](src/gaknot/invariants/H1_branched_cover.sage);
 - [characters](src/gaknot/invariants/character.sage);
+- [torus-character deck orbits](src/gaknot/invariants/torus_character.sage);
+- [common-`p` iterated twisted signatures](src/gaknot/invariants/iterated_torus_twisted_signature.sage);
 - [Casson--Gordon invariants](src/gaknot/invariants/casson_gordon.sage);
 - [Gilmer genus obstructions](src/gaknot/invariants/genus_bounds.sage); and
 - [the test suite](tests/), which includes mathematical examples, validation
