@@ -30,6 +30,14 @@ from .invariants.torus_twisted_signature import (
     yanagida_local_signature_jump,
     yanagida_signature_profile,
 )
+from .invariants.metabelian_satellite import (
+    SignatureJumpGap,
+    Theorem419SignatureResult,
+    TwistedSignatureJumpProfile,
+    classical_signature_jump_profile,
+    theorem_4_19_signature_jumps,
+    yanagida_twisted_signature_jump_profile,
+)
 
 __all__ = [
     'GeneralizedAlgebraicKnot',
@@ -57,4 +65,10 @@ __all__ = [
     'yanagida_local_signature_jump',
     'yanagida_generic_signature_jumps',
     'yanagida_signature_profile',
+    'SignatureJumpGap',
+    'TwistedSignatureJumpProfile',
+    'Theorem419SignatureResult',
+    'classical_signature_jump_profile',
+    'yanagida_twisted_signature_jump_profile',
+    'theorem_4_19_signature_jumps',
 ]
