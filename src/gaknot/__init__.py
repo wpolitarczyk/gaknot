@@ -20,6 +20,13 @@ from .invariants.torus_twisted_blanchfield import (
     YanagidaTorusData,
     canonical_bezout_coefficients,
 )
+from .invariants.torus_twisted_signature import (
+    HermitianInertia,
+    YanagidaSignatureJump,
+    exact_hermitian_inertia,
+    yanagida_generic_signature_jumps,
+    yanagida_local_signature_jump,
+)
 
 __all__ = [
     'GeneralizedAlgebraicKnot',
@@ -39,4 +46,9 @@ __all__ = [
     'YanagidaLocalModel',
     'YanagidaLocalPairing',
     'canonical_bezout_coefficients',
+    'HermitianInertia',
+    'YanagidaSignatureJump',
+    'exact_hermitian_inertia',
+    'yanagida_local_signature_jump',
+    'yanagida_generic_signature_jumps',
 ]
