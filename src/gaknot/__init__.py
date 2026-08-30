@@ -14,6 +14,12 @@ from .invariants.genus_bounds import (
     PrimeDiagonalLinkingForm,
     gilmer_genus_obstruction,
 )
+from .invariants.torus_twisted_blanchfield import (
+    YanagidaLocalModel,
+    YanagidaLocalPairing,
+    YanagidaTorusData,
+    canonical_bezout_coefficients,
+)
 
 __all__ = [
     'GeneralizedAlgebraicKnot',
@@ -29,4 +35,8 @@ __all__ = [
     'PrimaryGenusCheck',
     'PrimeDiagonalLinkingForm',
     'gilmer_genus_obstruction',
+    'YanagidaTorusData',
+    'YanagidaLocalModel',
+    'YanagidaLocalPairing',
+    'canonical_bezout_coefficients',
 ]
