@@ -193,6 +193,42 @@ The twisted Alexander calculation is currently restricted to positive,
 single-summand torus knots, and the character must be defined on the
 `p`-fold cover of `T(p,q)`.
 
+### Conway--Kim--Politarczyk reconstruction data
+
+The CKP interface retains the representation matrices and Fox determinants
+behind the twisted Alexander formula instead of exposing only their quotient:
+
+```python
+from gaknot import (
+    ckp_torus_knot_data,
+    zero_surgery_twisted_alexander_torus_knot,
+)
+
+ckp_data = ckp_torus_knot_data(trefoil, character)
+
+print(ckp_data.orbit.a_values)
+print(ckp_data.A)                         # A_p(t)
+print(ckp_data.c1_image)                  # A_p(t)^q
+print(ckp_data.c2_image)                  # t*diag(zeta_q^a_j)
+print(ckp_data.relation_holds)             # c1^p = c2^q
+print(ckp_data.fox_numerator_determinant)
+print(ckp_data.fox_denominator_determinant)
+print(ckp_data.exterior_twisted_alexander)
+print(zero_surgery_twisted_alexander_torus_knot(trefoil, character))
+```
+
+The two root-multiplicity tuples record the complete divisor at the `q`-th
+roots of unity. Positive multiplicities are zeros, negative values are poles,
+and zero means that numerator and denominator factors cancel. The distinction
+is important for the displayed rational representatives associated to trivial
+characters.
+
+For a signed sum of iterated torus knots with common first cabling parameter
+`p`, `knot.ckp_cable_levels()` returns the `s`-levels from CKP Proposition 5.4.
+Each immutable level record includes its expanded source terms, collected
+signed multiplicities, substitution power `p^s`, formal-cancellation status,
+and the cyclotomic root moduli used in the level-separation argument.
+
 ### Induced characters on a satellite companion
 
 For the nondivisible branch of BCP-II, Theorem 4.19, put
@@ -498,11 +534,13 @@ compatibility. It also supplies `plot_many`, `plot_sum_of_two`, and
 
 The ordered notebooks in [`notebooks/`](notebooks/) provide a guided route
 from the GA-knot data model through signatures, branched-cover characters,
-Casson--Gordon genus obstructions, and metabelian twisted signatures. The final
-notebook follows the newly implemented induced characters and exact phases
-through a nondivisible stage of Theorem 4.19. The tutorials include
-interpretation notes, support boundaries, and examples of explicit coverage
-gaps as well as successful calculations.
+Casson--Gordon genus obstructions, and metabelian twisted signatures. Later
+notebooks reconstruct the Marchwicka--Politarczyk genus computation and the
+finite calculations from Conway--Kim--Politarczyk: `s`-levels, explicit
+metabelian matrices, Fox determinants, and cyclotomic root support. The
+tutorials include interpretation notes, support boundaries, optional audit
+logging, and examples of explicit coverage gaps as well as successful
+calculations.
 
 After activating the Sage environment and running `make build`, start Jupyter
 from the repository root and select the **SageMath** kernel:
@@ -612,9 +650,11 @@ exhaustive bibliography of Casson--Gordon theory or knot signatures.
   [[journal](https://doi.org/10.2140/agt.2023.23.765)]
   [[arXiv:1910.01368](https://arxiv.org/abs/1910.01368)]
 
-  This paper is the source for the concrete metabelian character orbits and
-  the fixed twisted Alexander polynomial representative used for positive
-  torus knots, including Proposition 3.3.
+  This paper is the source for the concrete metabelian character orbits,
+  Proposition 3.2 representation matrices, the fixed exterior and
+  zero-surgery twisted Alexander representatives, the `s`-level decomposition,
+  and the cyclotomic root-separation calculations reconstructed by the CKP
+  API and notebook.
 
 - **[Y26]** Koki Yanagida,
   *Blanchfield pairings and twisted Blanchfield pairings of torus knots*,

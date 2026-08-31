@@ -13,6 +13,7 @@ objects introduced earlier.
 | [`04_metabelian_twisted_signatures.ipynb`](04_metabelian_twisted_signatures.ipynb) | Yanagida local models, Theorem 4.19, normalized twisted signatures, and explicit coverage gaps |
 | [`05_nondivisible_satellite_signatures.ipynb`](05_nondivisible_satellite_signatures.ipynb) | Induced companion characters, exact phase orbits, nondivisible Theorem 4.19 assembly, dimensional checks, and current pattern-profile limitations |
 | [`06_marchwicka_politarczyk_computation.ipynb`](06_marchwicka_politarczyk_computation.ipynb) | Theorem 1.1 of Marchwicka--Politarczyk, its eight-summand knot, primary linking forms, metabolizer interpretation, exhaustive isotropic-line searches, and optional text logging |
+| [`07_conway_kim_politarczyk_computation.ipynb`](07_conway_kim_politarczyk_computation.ipynb) | CKP `s`-levels, branched-cover character orbits, Proposition 3.2 representation matrices, Fox determinants, exterior and zero-surgery twisted Alexander representatives, cyclotomic root supports, and optional audit logging |
 
 ## Starting Jupyter with SageMath
 

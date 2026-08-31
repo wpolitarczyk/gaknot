@@ -289,6 +289,18 @@ class GeneralizedAlgebraicKnot:
             
         return total_poly
 
+    def ckp_cable_levels(self):
+        r"""Return the ``s``-levels used in CKP Proposition 5.4.
+
+        This convenience method applies to signed sums in which every cable
+        has one common first parameter ``p``.  The returned immutable records
+        retain the expanded source terms, formal cancellations, substitution
+        powers ``p^s``, and the root moduli used in the paper's separation
+        argument.
+        """
+        from gaknot.invariants.ckp import ckp_cable_levels
+        return ckp_cable_levels(self)
+
 
     # ------------------------------------------------------------------
     # Shape predicates used to select specialized invariant formulas
