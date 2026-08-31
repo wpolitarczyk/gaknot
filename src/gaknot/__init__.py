@@ -54,8 +54,10 @@ from .invariants.metabelian_satellite import (
 from .invariants.iterated_torus_twisted_signature import (
     IteratedTorusMetabelianSignatureFunctionResult,
     IteratedTorusMetabelianSignatureResult,
+    NondivisibleIteratedTorusMetabelianSignatureResult,
     iterated_torus_metabelian_signature_function,
     iterated_torus_metabelian_signature_jumps,
+    iterated_torus_nondivisible_signature_jumps,
 )
 
 __all__ = [
@@ -101,6 +103,8 @@ __all__ = [
     'theorem_4_19_signature_jumps',
     'IteratedTorusMetabelianSignatureFunctionResult',
     'IteratedTorusMetabelianSignatureResult',
+    'NondivisibleIteratedTorusMetabelianSignatureResult',
     'iterated_torus_metabelian_signature_function',
     'iterated_torus_metabelian_signature_jumps',
+    'iterated_torus_nondivisible_signature_jumps',
 ]

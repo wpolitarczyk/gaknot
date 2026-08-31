@@ -318,6 +318,57 @@ the function-level call still raises `NotImplementedError`: the zero-total-jump
 condition determines only the sum of missing contributions, not their separate
 locations.
 
+### One nondivisible outer cabling stage
+
+The high-level API can also assemble the nondivisible branch of BCP-II,
+Theorem 4.19, for one outer cabling stage.  Starting from a character on the
+satellite's `n`-fold cover, it performs all of the following bookkeeping:
+
+1. removes the outer pattern and constructs the `h=gcd(n,w)` induced
+   characters on the companion's `n/h`-fold cover;
+2. retains the exact outer-pattern phase paired with each character;
+3. computes the twisted signature-jump profile of every induced companion
+   character independently; and
+4. applies the substitutions `phase_j * t^(w/h)` and takes the direct sum
+   prescribed by Theorem 4.19.
+
+The current implementation can compute those lower-cover profiles when the
+remaining inner companion is a positive common-`p` iterated torus knot and
+its induced cover degree equals `p`.  For instance, the four-cover of
+`T(2,3;2,5)` has two induced characters on the double cover of `T(2,3)`, so
+its companion side lies in this domain:
+
+```python
+from gaknot import iterated_torus_nondivisible_signature_jumps
+
+# ``four_cover_character`` is the character constructed in the preceding
+# "Induced characters" example.  ``outer_pattern_profile`` must be the
+# separately calculated four-dimensional twisted profile of the outer
+# T(2,5) pattern, including every known jump and every coverage gap.
+nondivisible = iterated_torus_nondivisible_signature_jumps(
+    cable,
+    four_cover_character,
+    outer_pattern_profile,
+)
+
+print([chi.values for chi in nondivisible.induced_characters])
+# [[1/3], [2/3]]
+print(nondivisible.phase_arguments)  # (4/5, 1/5)
+print(nondivisible.satellite_result.case)  # metabelian_companion
+```
+
+The outer `pattern_profile` is a required argument rather than something the
+function fabricates internally.  Yanagida's currently implemented explicit
+matrices compute an `m`-dimensional representation of a pattern `T(m,q)`.  In
+a genuinely nondivisible outer stage, the cover degree `n` differs from the
+winding `w`, so those matrices do not supply the required `n`-dimensional
+profile of `T(w,q)`.  Passing a profile with the wrong `cover_degree` is an
+error, and passing no genuine calculation is not interpreted as a zero
+pattern contribution.  This explicit boundary keeps the implemented part of
+the cabling theorem mathematically honest while providing the full transport
+and assembly pipeline for profiles obtained by a future formula or another
+method.
+
 ### Casson--Gordon signatures of `(2,q)`-cables
 
 For an odd prime `q`, the package implements the double-cover cabling formula

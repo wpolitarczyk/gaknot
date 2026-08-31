@@ -1,4 +1,4 @@
-r"""End-to-end tests for common-``p`` iterated-torus twisted signatures.
+r"""End-to-end tests for iterated-torus twisted signatures.
 
 The lower-level test files verify the three mathematical ingredients
 independently:
@@ -26,6 +26,15 @@ Coverage gaps are tested just as carefully as known jumps.  Yanagida's
 formulas do not cover ``t=1`` and sometimes leave exceptional nontrivial
 primary modules unresolved.  An end-to-end function must preserve those gaps,
 not silently report a zero jump.
+
+The second half of the file checks one bounded nondivisible stage.  In that
+branch, a four-cover character on ``T(2,3;2,5)`` restricts to two characters
+on the double cover of the trefoil.  The high-level function must compute the
+two lower-cover profiles independently, keep them paired with their exact
+outer-pattern phases, and apply Theorem 4.19.  Since the current Yanagida API
+does not compute the four-dimensional outer ``T(2,5)`` representation, that
+pattern profile is deliberately supplied by the caller and plainly labelled
+as test data.
 """
 
 from dataclasses import FrozenInstanceError
@@ -40,9 +49,12 @@ from gaknot import (
     GeneralizedAlgebraicKnot,
     IteratedTorusMetabelianSignatureFunctionResult,
     IteratedTorusMetabelianSignatureResult,
+    NondivisibleIteratedTorusMetabelianSignatureResult,
     TorusCharacterOrbit,
+    TwistedSignatureJumpProfile,
     iterated_torus_metabelian_signature_function,
     iterated_torus_metabelian_signature_jumps,
+    iterated_torus_nondivisible_signature_jumps,
 )
 from gaknot.invariants.LT_signature import LT_signature_iterated_torus_knot
 from gaknot.invariants.metabelian_satellite import Theorem419SignatureResult
@@ -84,6 +96,27 @@ def _double_cable_nontrivial_character():
     )
     homology = BranchedCoverHomology(knot, 2)
     character = Character(homology, [[[QQ(1) / 5], []]])
+    return knot, homology, character
+
+
+def _nondivisible_double_cable_character():
+    r"""Return the four-cover fixture used by the nondivisible-stage tests.
+
+    For the outer winding ``w=2`` and cover degree ``n=4``, Theorem 4.19 has
+    ``h=gcd(4,2)=2`` companion summands on the ``n/h=2`` cover of the inner
+    trefoil.  The two inner coordinates below send the corresponding
+    ``Z/3Z`` generators to ``1/3`` and ``2/3``.  They are intentionally
+    different so that a test can detect accidentally reusing one companion
+    character, profile, or phase for both theorem summands.
+    """
+    knot = GeneralizedAlgebraicKnot.iterated_torus_knot(
+        [(2, 3), (2, 5)]
+    )
+    homology = BranchedCoverHomology(knot, 4)
+    character = Character(
+        homology,
+        [[[QQ(1) / 5], [QQ(1) / 3, QQ(2) / 3]]],
+    )
     return knot, homology, character
 
 
@@ -453,6 +486,221 @@ def test_equivalent_knot_instance_is_accepted_structurally():
 
     assert result.cable_sequence == ((2, 3), (2, 5))
     assert result.orbit.a_values == (4, 1)
+
+
+# ---------------------------------------------------------------------------
+# One nondivisible outer stage with computed lower-cover profiles
+# ---------------------------------------------------------------------------
+
+def test_nondivisible_stage_pairs_each_induced_profile_with_its_phase():
+    r"""Trace all data through the nondivisible branch of Theorem 4.19.
+
+    This is the principal regression for the new high-level path.  Removing
+    the outer ``(2,5)`` pattern from the four-cover fixture leaves the trefoil
+    in its double cover.  Character transport produces, in theorem order,
+
+    ``chi_1=(1/3), phase_1=4/5`` and
+    ``chi_2=(2/3), phase_2=1/5``.
+
+    The two characters give Yanagida orbit vectors ``(2,1)`` and ``(1,2)``.
+    Both trefoil calculations have only Yanagida's unresolved root ``t=1``;
+    the outer phase substitutions move those gaps to arguments ``1/5`` and
+    ``4/5``, respectively.  The synthetic jump at ``1/7`` represents a
+    separately computed outer-pattern contribution and must pass through
+    unchanged.  Checking each intermediate record makes a phase permutation,
+    character reuse, or silently discarded coverage gap visible immediately.
+    """
+    knot, homology, character = _nondivisible_double_cable_character()
+
+    # The structural premise is worth spelling out: the outer pattern occurs
+    # once in the four-cover, while its companion layer occurs twice.  Those
+    # two inner copies become the two independently constructed characters.
+    outer_layer, inner_layer = homology.decomposition[0]["layers"]
+    assert outer_layer["parameters"] == (2, 5)
+    assert outer_layer["effective_N"] == 4
+    assert outer_layer["multiplicity"] == 1
+    assert inner_layer["parameters"] == (2, 3)
+    assert inner_layer["effective_N"] == 2
+    assert inner_layer["multiplicity"] == 2
+
+    supplied_pattern = TwistedSignatureJumpProfile(
+        known_jumps=((QQ(1) / 7, 2),),
+        cover_degree=4,
+        label="externally supplied four-cover T(2,5) pattern",
+    )
+    result = iterated_torus_nondivisible_signature_jumps(
+        knot,
+        character,
+        supplied_pattern,
+    )
+
+    assert isinstance(
+        result,
+        NondivisibleIteratedTorusMetabelianSignatureResult,
+    )
+    assert result.cable_sequence == ((2, 3), (2, 5))
+    assert result.pattern_profile is supplied_pattern
+    assert result.transport.cover_degree == 4
+    assert result.transport.winding == 2
+    assert result.transport.h == 2
+    assert result.transport.lower_cover_degree == 2
+
+    # Character order and phase order are a single piece of theorem data.
+    # Compare them side by side before looking at the resulting profiles.
+    assert [chi.values for chi in result.induced_characters] == [
+        [QQ(1) / 3],
+        [QQ(2) / 3],
+    ]
+    assert result.phase_arguments == (QQ(4) / 5, QQ(1) / 5)
+    assert len(result.companion_results) == 2
+    assert all(
+        companion.cable_sequence == ((2, 3),)
+        for companion in result.companion_results
+    )
+    assert [
+        companion.orbit.generator_values
+        for companion in result.companion_results
+    ] == [(QQ(1) / 3,), (QQ(2) / 3,)]
+    assert [
+        companion.orbit.a_values
+        for companion in result.companion_results
+    ] == [(2, 1), (1, 2)]
+
+    # Each raw companion profile belongs to the lower, two-dimensional
+    # representation.  For these two characters its only gap is at t=1.
+    assert all(
+        profile.cover_degree == 2
+        for profile in result.companion_profiles
+    )
+    assert [
+        profile.known_jumps for profile in result.companion_profiles
+    ] == [(), ()]
+    assert [
+        profile.unresolved_arguments for profile in result.companion_profiles
+    ] == [(QQ(0),), (QQ(0),)]
+
+    theorem_result = result.satellite_result
+    assert theorem_result.case == "metabelian_companion"
+    assert theorem_result.cover_degree == 4
+    assert theorem_result.winding == 2
+    assert theorem_result.h == 2
+
+    # Here the substitution exponent is w/h=1.  Pulling the root-zero gaps
+    # back by phases 4/5 and 1/5 therefore sends them to 1/5 and 4/5.  Build
+    # the expected summands from the raw profiles to verify the association,
+    # not merely the unordered set of final gap locations.
+    expected_summands = tuple(
+        profile.pullback(
+            phase,
+            1,
+            label=f"metabelian companion summand {index + 1}",
+        )
+        for index, (profile, phase) in enumerate(zip(
+            result.companion_profiles,
+            result.phase_arguments,
+        ))
+    )
+    assert result.companion_summands == expected_summands
+    assert [
+        summand.unresolved_arguments for summand in result.companion_summands
+    ] == [(QQ(1) / 5,), (QQ(4) / 5,)]
+
+    # Only the explicitly supplied pattern jump is known.  The two companion
+    # gaps remain unresolved in the total instead of being treated as zeros.
+    assert result.total_profile.known_jumps == ((QQ(1) / 7, 2),)
+    assert result.unresolved_arguments == (QQ(1) / 5, QQ(4) / 5)
+    assert not result.is_complete
+    with pytest.raises(NotImplementedError, match="argument 1/5"):
+        result.total_profile.jump_at(QQ(1) / 5)
+
+
+def test_nondivisible_result_is_an_immutable_diagnostic_record():
+    """Prevent replacement of the transport after the theorem is assembled."""
+    knot, _, character = _nondivisible_double_cable_character()
+    supplied_pattern = TwistedSignatureJumpProfile(
+        cover_degree=4,
+        label="supplied outer pattern",
+    )
+    result = iterated_torus_nondivisible_signature_jumps(
+        knot,
+        character,
+        supplied_pattern,
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        result.transport = character.induced_companion_characters()
+
+
+def test_nondivisible_stage_requires_a_matching_pattern_cover_degree():
+    r"""Reject an outer profile computed in the wrong representation.
+
+    In particular, a currently available Yanagida profile for the winding-two
+    pattern would carry cover degree two.  It cannot be relabelled as the
+    four-dimensional outer pattern required by this example.
+    """
+    knot, _, character = _nondivisible_double_cable_character()
+    wrong_cover_pattern = TwistedSignatureJumpProfile(
+        cover_degree=2,
+        label="wrong-dimensional pattern",
+    )
+
+    with pytest.raises(ValueError, match="cover_degree=2.*degree 4"):
+        iterated_torus_nondivisible_signature_jumps(
+            knot,
+            character,
+            wrong_cover_pattern,
+        )
+
+
+def test_nondivisible_stage_rejects_the_divisible_branch():
+    """Direct common-p input to the existing ordinary-companion interface."""
+    knot, _, character = _double_cable_nontrivial_character()
+    pattern = TwistedSignatureJumpProfile(cover_degree=2)
+
+    with pytest.raises(ValueError, match="winding is divisible"):
+        iterated_torus_nondivisible_signature_jumps(
+            knot,
+            character,
+            pattern,
+        )
+
+
+def test_nondivisible_stage_reports_an_unsupported_lower_cover():
+    r"""Stop when the induced companion is outside the common-p engine.
+
+    For ``T(3,4;2,5)`` in the four-cover, removing the outer winding-two
+    pattern again leaves a double cover.  The inner torus knot, however, has
+    first parameter three.  The existing end-to-end Yanagida calculation for
+    ``T(3,4)`` requires its three-cover, so the high-level function must state
+    this missing recursion instead of computing with mismatched dimensions.
+    """
+    knot = GeneralizedAlgebraicKnot.iterated_torus_knot(
+        [(3, 4), (2, 5)]
+    )
+    character = _zero_character(knot, 4)
+    pattern = TwistedSignatureJumpProfile(cover_degree=4)
+
+    with pytest.raises(
+        NotImplementedError,
+        match=r"induced companion cover degree.*degree 2 and p=3",
+    ):
+        iterated_torus_nondivisible_signature_jumps(
+            knot,
+            character,
+            pattern,
+        )
+
+
+def test_nondivisible_stage_rejects_non_profile_pattern_input():
+    """Require coverage metadata rather than accepting a bare jump mapping."""
+    knot, _, character = _nondivisible_double_cable_character()
+
+    with pytest.raises(TypeError, match="TwistedSignatureJumpProfile"):
+        iterated_torus_nondivisible_signature_jumps(
+            knot,
+            character,
+            {QQ(1) / 7: 2},
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 #!/usr/bin/env sage -python
 
-r"""End-to-end metabelian signatures for common-``p`` iterated cables.
+r"""End-to-end metabelian signatures for iterated torus cables.
 
 This module joins three calculations that are intentionally kept independent
 elsewhere in the package:
@@ -37,6 +37,16 @@ is representable.  If the jump computation has no gap away from ``t=1``,
 :func:`iterated_torus_metabelian_signature_function` uses representability to
 recover the missing jump at one, normalizes the averaged signature to vanish
 there, and exposes the corresponding Casson--Gordon signature difference.
+
+The module also implements one bounded step of Theorem 4.19's nondivisible
+branch.  When the outer cover degree does not divide the outer winding,
+:func:`iterated_torus_nondivisible_signature_jumps` transports the source
+character to the ``h`` lower-cover companion characters, computes every
+companion profile when the remaining cable is in the common-``p`` domain, and
+assembles the phase/power substitutions prescribed by the theorem.  Its outer
+pattern profile is explicit caller input.  This is essential: the presently
+implemented Yanagida matrices do not supply the required pattern form when
+the pattern winding and representation dimension differ.
 """
 
 from dataclasses import dataclass, field
@@ -46,9 +56,11 @@ from sage.all import Integer
 from gaknot.core.gaknot import GeneralizedAlgebraicKnot
 from gaknot.invariants.LT_signature import LT_signature_iterated_torus_knot
 from gaknot.invariants.character import Character
+from gaknot.invariants.character_transport import InducedCompanionCharacters
 from gaknot.invariants.metabelian_satellite import (
     AveragedTwistedSignatureFunction,
     Theorem419SignatureResult,
+    TwistedSignatureJumpProfile,
     averaged_signature_from_representable_profile,
     theorem_4_19_signature_jumps,
 )
@@ -158,6 +170,186 @@ class IteratedTorusMetabelianSignatureResult:
     @property
     def unresolved_arguments(self):
         """Return the roots at which some local contribution remains unknown."""
+        return self.satellite_result.unresolved_arguments
+
+
+@dataclass(frozen=True)
+class NondivisibleIteratedTorusMetabelianSignatureResult:
+    r"""Inspectable assembly of Theorem 4.19's nondivisible branch.
+
+    ``transport`` contains the ``h`` induced characters and their equally
+    ordered phase arguments.  ``companion_results[j]`` is the complete
+    coverage-aware calculation performed on the inner companion with
+    ``transport.characters[j]``.  Finally, ``satellite_result`` substitutes
+    those ``h`` raw profiles by the corresponding phase and power and adds
+    them to the caller-supplied outer ``pattern_profile``.
+
+    The outer profile is explicit input because Yanagida's current formulas
+    calculate the cover-degree-``m`` representation of ``T(m,n)``.  At a
+    nondivisible ``(p,q)`` cabling stage the satellite cover degree is not
+    ``p``, so manufacturing a Yanagida profile there would assert a formula
+    outside its proved domain.
+    """
+
+    cable_sequence: tuple
+    transport: InducedCompanionCharacters = field(repr=False)
+    pattern_profile: TwistedSignatureJumpProfile = field(repr=False)
+    companion_results: tuple = field(repr=False)
+    satellite_result: Theorem419SignatureResult = field(repr=False)
+
+    def __post_init__(self):
+        if (
+            not isinstance(self.cable_sequence, tuple)
+            or len(self.cable_sequence) < 2
+        ):
+            raise ValueError(
+                "cable_sequence must contain an outer pattern and a "
+                "nontrivial companion."
+            )
+        if any(
+            not isinstance(pair, tuple) or len(pair) != 2
+            for pair in self.cable_sequence
+        ):
+            raise TypeError("Every cable_sequence entry must be a (p,q) tuple.")
+        if not isinstance(self.transport, InducedCompanionCharacters):
+            raise TypeError(
+                "transport must be an InducedCompanionCharacters object."
+            )
+        if not isinstance(
+            self.pattern_profile,
+            TwistedSignatureJumpProfile,
+        ):
+            raise TypeError(
+                "pattern_profile must be a TwistedSignatureJumpProfile object."
+            )
+        if not isinstance(self.companion_results, tuple) or any(
+            not isinstance(item, IteratedTorusMetabelianSignatureResult)
+            for item in self.companion_results
+        ):
+            raise TypeError(
+                "companion_results must be a tuple of "
+                "IteratedTorusMetabelianSignatureResult objects."
+            )
+        if not isinstance(self.satellite_result, Theorem419SignatureResult):
+            raise TypeError(
+                "satellite_result must be a Theorem419SignatureResult object."
+            )
+
+        source_description = (
+            self.transport.source_character.homology.knot.description
+        )
+        if source_description != [(1, list(self.cable_sequence))]:
+            raise ValueError(
+                "cable_sequence does not describe the transport's source knot."
+            )
+        companion_sequence = self.cable_sequence[:-1]
+        if self.transport.companion_knot.description != [
+            (1, list(companion_sequence))
+        ]:
+            raise ValueError(
+                "transport does not remove the recorded outer pattern."
+            )
+        if len(self.companion_results) != self.transport.h:
+            raise ValueError(
+                "There must be one companion result per induced character."
+            )
+        for result in self.companion_results:
+            if result.cable_sequence != companion_sequence:
+                raise ValueError(
+                    "A companion result describes the wrong inner cable."
+                )
+            if (
+                result.satellite_result.cover_degree
+                != self.transport.lower_cover_degree
+            ):
+                raise ValueError(
+                    "A companion result uses the wrong lower cover degree."
+                )
+
+        if self.pattern_profile.cover_degree != self.transport.cover_degree:
+            raise ValueError(
+                "pattern_profile must carry the satellite cover degree."
+            )
+        theorem_result = self.satellite_result
+        if (
+            theorem_result.case != "metabelian_companion"
+            or theorem_result.cover_degree != self.transport.cover_degree
+            or theorem_result.winding != self.transport.winding
+            or theorem_result.h != self.transport.h
+        ):
+            raise ValueError(
+                "satellite_result does not describe this nondivisible stage."
+            )
+        if theorem_result.phase_arguments != self.transport.phase_arguments:
+            raise ValueError(
+                "satellite phases do not match the transported phase orbit."
+            )
+        if theorem_result.pattern_profile != self.pattern_profile:
+            raise ValueError(
+                "satellite_result does not use the recorded pattern profile."
+            )
+
+        # The profiles computed from the induced characters must be exactly
+        # the profiles transformed by Theorem 4.19.  Checking each summand
+        # independently catches a phase-order permutation even when the final
+        # direct sum happens to be unchanged by that permutation.
+        exponent = self.transport.winding // self.transport.h
+        for index, (result, phase, summand) in enumerate(zip(
+            self.companion_results,
+            self.transport.phase_arguments,
+            theorem_result.companion_summands,
+        )):
+            expected = result.total_profile.pullback(
+                phase,
+                exponent,
+                label=f"metabelian companion summand {index + 1}",
+            )
+            if summand != expected:
+                raise ValueError(
+                    "satellite_result does not preserve the ordered "
+                    "character/profile/phase correspondence."
+                )
+
+    @property
+    def induced_characters(self):
+        """Return the ``h`` lower-cover characters in theorem order."""
+
+        return self.transport.characters
+
+    @property
+    def phase_arguments(self):
+        """Return the phase paired with each induced character."""
+
+        return self.transport.phase_arguments
+
+    @property
+    def companion_profiles(self):
+        """Return the raw lower-cover profile computed for every character."""
+
+        return tuple(result.total_profile for result in self.companion_results)
+
+    @property
+    def companion_summands(self):
+        """Return the phase/power-pulled companion contributions."""
+
+        return self.satellite_result.companion_summands
+
+    @property
+    def total_profile(self):
+        """Return the assembled pattern and transformed-companion profile."""
+
+        return self.satellite_result.total_profile
+
+    @property
+    def is_complete(self):
+        """Return whether every jump in the assembled satellite is known."""
+
+        return self.satellite_result.is_complete
+
+    @property
+    def unresolved_arguments(self):
+        """Return roots retaining at least one unresolved local contribution."""
+
         return self.satellite_result.unresolved_arguments
 
 
@@ -407,6 +599,145 @@ def iterated_torus_metabelian_signature_jumps(knot, character):
         orbit=orbit,
         yanagida_profile=yanagida_profile,
         companion_signature=companion_signature,
+        satellite_result=satellite_result,
+    )
+
+
+def iterated_torus_nondivisible_signature_jumps(
+    knot,
+    character,
+    pattern_profile,
+):
+    r"""Assemble one nondivisible cabling stage from concrete character data.
+
+    The function removes the outermost cable, computes the induced characters
+    and phases, evaluates the existing common-``p`` end-to-end formula on the
+    inner companion for every induced character, and passes the resulting raw
+    profiles to Theorem 4.19.
+
+    Args:
+        knot: A positive one-summand iterated torus knot with at least two
+            cabling layers.
+        character: A :class:`Character` on the branched cover of ``knot``.
+            Its cover degree ``n`` and outer winding ``w`` must satisfy
+            ``n`` not dividing ``w``.
+        pattern_profile: A coverage-aware
+            :class:`TwistedSignatureJumpProfile` for the outer torus pattern
+            in the original ``n``-dimensional representation.  The profile
+            must declare ``cover_degree=n``.
+
+    Returns:
+        A :class:`NondivisibleIteratedTorusMetabelianSignatureResult` retaining
+        the induced characters, exact phases, each independently computed
+        lower-cover result, the transformed companion summands, and the total
+        coverage-aware profile.
+
+    Raises:
+        TypeError: If a public argument has the wrong type.
+        ValueError: If the character belongs to another knot, the selected
+            stage is divisible, or the supplied pattern profile has the wrong
+            cover degree.
+        NotImplementedError: If the inner companion does not have a common
+            first cabling parameter equal to its induced cover degree.  In
+            that case its twisted profile requires a further nondivisible
+            recursion or another pattern calculation not yet supplied by this
+            bounded API.
+
+    The requirement that ``pattern_profile`` be supplied is deliberate.
+    Yanagida's explicit matrices describe an ``m``-dimensional representation
+    of ``T(m,q)``.  Here the outer pattern is ``T(w,q)`` but nondivisibility
+    forces the original cover degree away from the currently supported
+    ``m=w`` situation.  The function therefore never substitutes an empty
+    profile for an unknown outer contribution.
+    """
+
+    if not isinstance(knot, GeneralizedAlgebraicKnot):
+        raise TypeError("knot must be a GeneralizedAlgebraicKnot object.")
+    if not isinstance(character, Character):
+        raise TypeError("character must be a Character object.")
+    if not isinstance(pattern_profile, TwistedSignatureJumpProfile):
+        raise TypeError(
+            "pattern_profile must be a TwistedSignatureJumpProfile object."
+        )
+    if not knot.is_iterated_torus_knot():
+        raise NotImplementedError(
+            "The nondivisible end-to-end formula currently supports one "
+            "positive iterated torus knot."
+        )
+
+    _, cable_sequence_list = knot.description[0]
+    cable_sequence = tuple(tuple(pair) for pair in cable_sequence_list)
+    if len(cable_sequence) < 2:
+        raise ValueError(
+            "The nondivisible stage requires a nontrivial inner companion."
+        )
+
+    homology = character.homology
+    if homology.knot.description != knot.description:
+        raise ValueError(
+            "Character must be defined on the homology of the supplied knot."
+        )
+    cover_degree = Integer(homology.cover_degree)
+    winding = Integer(cable_sequence[-1][0])
+    if winding % cover_degree == 0:
+        raise ValueError(
+            "The outer winding is divisible by the cover degree; use "
+            "iterated_torus_metabelian_signature_jumps for the supported "
+            "ordinary-companion branch."
+        )
+    if pattern_profile.cover_degree != cover_degree:
+        actual_degree = pattern_profile.cover_degree
+        if actual_degree is None:
+            actual_text = "no cover degree"
+        else:
+            actual_text = f"cover_degree={int(actual_degree)}"
+        raise ValueError(
+            f"pattern_profile has {actual_text}, but the satellite cover "
+            f"has degree {int(cover_degree)}."
+        )
+
+    transport = character.induced_companion_characters()
+    companion_sequence = cable_sequence[:-1]
+    companion_p = Integer(companion_sequence[0][0])
+    if any(pair[0] != companion_p for pair in companion_sequence):
+        raise NotImplementedError(
+            "Each induced companion currently requires a common first "
+            "cabling parameter."
+        )
+    if transport.lower_cover_degree != companion_p:
+        raise NotImplementedError(
+            "The induced companion cover degree must equal its common first "
+            f"cabling parameter. Got degree "
+            f"{int(transport.lower_cover_degree)} and p={int(companion_p)}."
+        )
+
+    # Each character can select different Yanagida matrices and therefore a
+    # different collection of known and exceptional jumps.  Compute them
+    # independently; reusing the first profile for every copy would erase the
+    # very character dependence that the nondivisible branch preserves.
+    companion_results = tuple(
+        iterated_torus_metabelian_signature_jumps(
+            transport.companion_knot,
+            induced_character,
+        )
+        for induced_character in transport.characters
+    )
+    companion_profiles = tuple(
+        result.total_profile for result in companion_results
+    )
+
+    satellite_result = theorem_4_19_signature_jumps(
+        pattern_profile,
+        cover_degree,
+        winding,
+        phase_arguments=transport.phase_arguments,
+        metabelian_companion_profiles=companion_profiles,
+    )
+    return NondivisibleIteratedTorusMetabelianSignatureResult(
+        cable_sequence=cable_sequence,
+        transport=transport,
+        pattern_profile=pattern_profile,
+        companion_results=companion_results,
         satellite_result=satellite_result,
     )
 
