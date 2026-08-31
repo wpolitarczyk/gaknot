@@ -11,6 +11,7 @@ objects introduced earlier.
 | [`02_branched_covers_and_characters.ipynb`](02_branched_covers_and_characters.ipynb) | Branched-cover homology, structural coordinates, characters, deck orbits, and twisted Alexander polynomials |
 | [`03_casson_gordon_and_genus_bounds.ipynb`](03_casson_gordon_and_genus_bounds.ipynb) | Casson--Gordon summands, nullity, linking forms, isotropic lines, and Gilmer genus obstructions |
 | [`04_metabelian_twisted_signatures.ipynb`](04_metabelian_twisted_signatures.ipynb) | Yanagida local models, Theorem 4.19, normalized twisted signatures, and explicit coverage gaps |
+| [`05_nondivisible_satellite_signatures.ipynb`](05_nondivisible_satellite_signatures.ipynb) | Induced companion characters, exact phase orbits, nondivisible Theorem 4.19 assembly, dimensional checks, and current pattern-profile limitations |
 
 ## Starting Jupyter with SageMath
 

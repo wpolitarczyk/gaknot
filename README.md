@@ -478,9 +478,11 @@ compatibility. It also supplies `plot_many`, `plot_sum_of_two`, and
 
 The ordered notebooks in [`notebooks/`](notebooks/) provide a guided route
 from the GA-knot data model through signatures, branched-cover characters,
-Casson--Gordon genus obstructions, and metabelian twisted signatures. They
-include interpretation notes, support boundaries, and examples of explicit
-coverage gaps as well as successful calculations.
+Casson--Gordon genus obstructions, and metabelian twisted signatures. The final
+notebook follows the newly implemented induced characters and exact phases
+through a nondivisible stage of Theorem 4.19. The tutorials include
+interpretation notes, support boundaries, and examples of explicit coverage
+gaps as well as successful calculations.
 
 After activating the Sage environment and running `make build`, start Jupyter
 from the repository root and select the **SageMath** kernel:
@@ -494,7 +496,7 @@ kernel without modifying it, or select one file, with:
 
 ```bash
 make notebooks
-make notebooks NOTEBOOK_FILE=notebooks/04_metabelian_twisted_signatures.ipynb
+make notebooks NOTEBOOK_FILE=notebooks/05_nondivisible_satellite_signatures.ipynb
 ```
 
 See the [notebook index](notebooks/README.md) for the recommended order and a
