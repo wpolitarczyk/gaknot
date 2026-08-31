@@ -20,10 +20,18 @@ companion layer has multiplicity ``r`` in the ``n/h``-fold cover, then its
 length ``r``.  Restricting the source character to block ``i-1`` in every
 inner layer produces ``chi_i`` in the same structural Smith bases.
 
-This module implements precisely that restriction.  It does *not* calculate
-the phase values ``chi_i(q_Q(mu_Q^(-w) eta))`` appearing in Theorem 4.19;
-those values involve the distinguished pattern element and are separate from
-transporting the character on the companion homology.
+For a standard ``(p,q)`` cable, the infection curve is the core ``eta`` of the
+complementary solid torus and ``w=p``.  The phase in the same companion term is
+the source character evaluated on
+
+``t_Q^(i-1) q_Q(mu_Q^(-p) eta)``.
+
+The class without the deck translate is the distinguished torus-pattern
+Alexander-module generator.  This module obtains its exact Smith coordinates
+from :func:`torus_pattern_phase_orbit` and attaches the resulting ``h`` phase
+arguments to the transported characters.  Thus the two ordered tuples have
+the same index: ``characters[j]`` and ``phase_arguments[j]`` belong to the
+same summand of Theorem 4.19.
 """
 
 from dataclasses import dataclass, field
@@ -33,6 +41,10 @@ from sage.all import Integer, gcd
 from gaknot.core.gaknot import GeneralizedAlgebraicKnot
 from gaknot.invariants.H1_branched_cover import BranchedCoverHomology
 from gaknot.invariants.character import Character
+from gaknot.invariants.torus_character import (
+    TorusPatternPhaseOrbit,
+    torus_pattern_phase_orbit,
+)
 
 
 def _validated_component_index(character, component_index):
@@ -51,6 +63,71 @@ def _validated_component_index(character, component_index):
             f"0,...,{component_count - 1}."
         )
     return component_index
+
+
+def outer_torus_pattern_phase_orbit(
+    character,
+    component_index=0,
+    orbit_length=None,
+):
+    r"""Evaluate ``character`` on the selected outer cable's phase classes.
+
+    This is the concrete GA-knot bridge to
+    :func:`torus_pattern_phase_orbit`.  It selects the outermost ``(p,q)``
+    pattern of one connected-sum component, extracts the character values on
+    its unique homology copy, and checks that independently computed Smith
+    factors agree with the structural homology layer.
+
+    The default returns the complete orbit of length equal to the branched
+    cover degree.  Passing ``gcd(n,p)`` gives exactly the phases required by
+    the nondivisible branch of Theorem 4.19; passing ``n`` gives the phases in
+    the divisible branch.
+    """
+
+    if not isinstance(character, Character):
+        raise TypeError("character must be a Character object.")
+    component_index = _validated_component_index(character, component_index)
+
+    homology = character.homology
+    component = homology.decomposition[component_index]
+    cable_sequence = [tuple(pair) for pair in component["description"]]
+    if not cable_sequence:
+        raise ValueError(
+            "The selected component has no torus-pattern layer."
+        )
+
+    cover_degree = Integer(homology.cover_degree)
+    p, q = cable_sequence[-1]
+    outer_layer = component["layers"][0]
+    if (
+        outer_layer["cable_index"] != len(cable_sequence) - 1
+        or tuple(outer_layer["parameters"]) != (p, q)
+        or outer_layer["effective_N"] != cover_degree
+        or outer_layer["multiplicity"] != 1
+    ):
+        raise ArithmeticError(
+            "The source homology does not have the expected unique outer "
+            "torus-pattern layer."
+        )
+
+    outer_copies = character.restrict_to_layer(component_index, 0)
+    if len(outer_copies) != 1:
+        raise ArithmeticError(
+            "The outer torus-pattern layer must contain exactly one copy."
+        )
+    phase_orbit = torus_pattern_phase_orbit(
+        p,
+        q,
+        cover_degree,
+        outer_copies[0],
+        orbit_length=orbit_length,
+    )
+    if phase_orbit.smith_factors != tuple(outer_layer["base_factors"]):
+        raise ArithmeticError(
+            "The phase calculation and outer homology layer use different "
+            "Smith-factor conventions."
+        )
+    return phase_orbit
 
 
 @dataclass(frozen=True)
@@ -75,6 +152,7 @@ class InducedCompanionCharacters:
     winding: object
     h: object
     lower_cover_degree: object
+    pattern_phase_orbit: TorusPatternPhaseOrbit = field(repr=False)
     characters: tuple = field(repr=False)
 
     def __post_init__(self):
@@ -130,6 +208,23 @@ class InducedCompanionCharacters:
                 "companion_homology has the wrong lower cover degree."
             )
 
+        if not isinstance(
+            self.pattern_phase_orbit,
+            TorusPatternPhaseOrbit,
+        ):
+            raise TypeError(
+                "pattern_phase_orbit must be a TorusPatternPhaseOrbit object."
+            )
+        if (
+            self.pattern_phase_orbit.cover_degree != self.cover_degree
+            or self.pattern_phase_orbit.p != self.winding
+            or self.pattern_phase_orbit.orbit_length != self.h
+        ):
+            raise ValueError(
+                "pattern_phase_orbit has incompatible cover, winding, or "
+                "orbit-length metadata."
+            )
+
         if not isinstance(self.characters, tuple):
             raise TypeError("characters must be a tuple.")
         if len(self.characters) != self.h:
@@ -156,6 +251,12 @@ class InducedCompanionCharacters:
         """Return the corresponding exponents of ``t_Q``: ``0,...,h-1``."""
 
         return tuple(Integer(index) for index in range(int(self.h)))
+
+    @property
+    def phase_arguments(self):
+        r"""Return ``chi(t_Q^j q_Q(mu_Q^(-w) eta))`` for ``j=0,...,h-1``."""
+
+        return self.pattern_phase_orbit.phase_arguments
 
     def __len__(self):
         """Return the number ``h`` of induced characters."""
@@ -315,6 +416,11 @@ def induced_companion_characters(character, component_index=0):
         Character(companion_homology, [nested_values])
         for nested_values in induced_nested_values
     )
+    pattern_phase_orbit = outer_torus_pattern_phase_orbit(
+        character,
+        component_index,
+        orbit_length=h,
+    )
     return InducedCompanionCharacters(
         source_character=character,
         component_index=component_index,
@@ -324,5 +430,6 @@ def induced_companion_characters(character, component_index=0):
         winding=winding,
         h=h,
         lower_cover_degree=lower_cover_degree,
+        pattern_phase_orbit=pattern_phase_orbit,
         characters=characters,
     )

@@ -58,10 +58,12 @@ number, and put ``h=gcd(n,w)``.
 
 The function :func:`theorem_4_19_signature_jumps` implements exactly these
 three branches.  The caller supplies the phase arguments and, in the final
-branch, the lower-cover companion profiles.  Computing the induced characters
-``chi_i`` and the values ``chi_i(q_Q(mu_Q^{-w} eta))`` from a concrete knot is
-a separate topological step; keeping it outside this algebraic layer makes
-the assumptions and remaining work visible.
+branch, the lower-cover companion profiles.  For standard torus cables in the
+GA-knot model, :func:`induced_companion_characters` performs the separate
+topological step: it supplies both the lower-cover characters ``chi_i`` and
+the values on ``t_Q^(i-1)q_Q(mu_Q^{-w} eta)``.  Keeping that coordinate
+calculation outside this algebraic layer makes the assumptions visible and
+also allows this function to accept profiles obtained by other methods.
 
 Notation warning
 ----------------

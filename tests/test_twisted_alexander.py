@@ -14,6 +14,7 @@ from gaknot.invariants.character import Character
 from gaknot.invariants.torus_character import (
     TorusCharacterOrbit,
     torus_character_orbit,
+    torus_pattern_phase_orbit,
 )
 from gaknot.invariants.twisted_alexander import twisted_alexander_torus_knot
 
@@ -72,6 +73,21 @@ def test_torus_character_orbit_uses_the_historical_smith_basis_order(
     # unity, and preserve the same order as the integer orbit.
     assert sum(orbit.a_values) % q == 0
     assert orbit.phase_arguments == tuple(QQ(a) / q for a in expected_orbit)
+
+    # The general cable-phase implementation uses arbitrary cover degree and
+    # arbitrary Smith factors.  On this older, specialized n=p domain it must
+    # nevertheless reproduce the established orbit exactly.  This comparison
+    # prevents the two consumers of the distinguished class--twisted
+    # Alexander polynomials and Theorem 4.19 phases--from drifting to different
+    # Smith bases or cyclic starting points.
+    phase_orbit = torus_pattern_phase_orbit(
+        p,
+        q,
+        p,
+        generator_values,
+    )
+    assert phase_orbit.smith_factors == tuple(q for _ in range(p - 1))
+    assert phase_orbit.phase_arguments == orbit.phase_arguments
 
 
 def test_torus_character_orbit_normalizes_character_and_orbit_representatives():

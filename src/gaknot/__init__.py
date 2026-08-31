@@ -4,6 +4,7 @@ from .invariants.character import Character
 from .invariants.character_transport import (
     InducedCompanionCharacters,
     induced_companion_characters,
+    outer_torus_pattern_phase_orbit,
 )
 from .invariants.signature import SignatureFunction, SignaturePloter
 from .invariants.casson_gordon import (
@@ -26,7 +27,9 @@ from .invariants.torus_twisted_blanchfield import (
 )
 from .invariants.torus_character import (
     TorusCharacterOrbit,
+    TorusPatternPhaseOrbit,
     torus_character_orbit,
+    torus_pattern_phase_orbit,
 )
 from .invariants.torus_twisted_signature import (
     HermitianInertia,
@@ -61,6 +64,7 @@ __all__ = [
     'Character',
     'InducedCompanionCharacters',
     'induced_companion_characters',
+    'outer_torus_pattern_phase_orbit',
     'SignatureFunction',
     'SignaturePloter',
     'CassonGordonInvariant',
@@ -76,7 +80,9 @@ __all__ = [
     'YanagidaLocalPairing',
     'canonical_bezout_coefficients',
     'TorusCharacterOrbit',
+    'TorusPatternPhaseOrbit',
     'torus_character_orbit',
+    'torus_pattern_phase_orbit',
     'HermitianInertia',
     'YanagidaExceptionalRoot',
     'YanagidaSignatureJump',

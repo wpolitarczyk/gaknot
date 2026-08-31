@@ -238,6 +238,32 @@ class Character:
         )
         return induced_companion_characters(self, component_index)
 
+    def outer_torus_pattern_phase_orbit(
+        self,
+        component_index=0,
+        orbit_length=None,
+    ):
+        r"""Evaluate this character on an outer cable's distinguished orbit.
+
+        For a standard ``(p,q)`` cable, the returned entries are the exact
+        values on ``t_Q^j q_Q(mu_Q^(-p) eta)``.  They supply the root-of-unity
+        phases in both nonzero-winding branches of BCP-II, Theorem 4.19.
+
+        By default the complete orbit in the current branched cover is
+        returned.  A caller implementing the nondivisible branch usually asks
+        for ``gcd(cover_degree,p)`` entries; induced-character transport does
+        this automatically.
+        """
+
+        from gaknot.invariants.character_transport import (
+            outer_torus_pattern_phase_orbit,
+        )
+        return outer_torus_pattern_phase_orbit(
+            self,
+            component_index,
+            orbit_length,
+        )
+
 
     # ------------------------------------------------------------------
     # Derived invariants and small structural helpers

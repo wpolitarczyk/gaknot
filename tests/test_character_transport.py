@@ -23,7 +23,9 @@ from gaknot import (
     Character,
     GeneralizedAlgebraicKnot,
     InducedCompanionCharacters,
+    TorusPatternPhaseOrbit,
     induced_companion_characters,
+    torus_pattern_phase_orbit,
 )
 
 
@@ -56,7 +58,7 @@ def test_two_induced_characters_are_the_two_deck_translated_copies():
     ]
     source = Character(
         homology,
-        [[[0], [QQ(1) / 3, QQ(2) / 3]]],
+        [[[QQ(1) / 5], [QQ(1) / 3, QQ(2) / 3]]],
     )
 
     transport = induced_companion_characters(source)
@@ -72,6 +74,14 @@ def test_two_induced_characters_are_the_two_deck_translated_copies():
     assert transport.deck_powers == (0, 1)
     assert transport.companion_knot.description == [(1, [(2, 3)])]
     assert transport.companion_homology.cover_degree == 2
+    assert isinstance(transport.pattern_phase_orbit, TorusPatternPhaseOrbit)
+    assert transport.pattern_phase_orbit.smith_factors == (5,)
+    assert transport.pattern_phase_orbit.generator_values == (QQ(1) / 5,)
+    assert transport.pattern_phase_orbit.smith_coordinates == (
+        (-1,),
+        (-4,),
+    )
+    assert transport.phase_arguments == (QQ(4) / 5, QQ(1) / 5)
     assert [character.values for character in transport] == [
         [QQ(1) / 3],
         [QQ(2) / 3],
@@ -87,6 +97,153 @@ def test_two_induced_characters_are_the_two_deck_translated_copies():
         [QQ(1) / 3],
         [QQ(2) / 3],
     ]
+    assert via_method.phase_arguments == (QQ(4) / 5, QQ(1) / 5)
+
+
+def test_outer_pattern_phase_api_can_return_the_complete_deck_orbit():
+    r"""The public Character method is useful in both branches of the theorem.
+
+    For the four-fold cover of ``T(2,5)``, the homology is ``Z/5``.  In the
+    project's fixed Smith basis, the distinguished element and its first
+    three translates have coordinates ``-1,-4,-1,1``.  A character taking the
+    Smith generator to ``1/5`` therefore gives phases
+    ``4/5,1/5,4/5,1/5``.  Induced transport needs only the first ``h=2`` of
+    these, whereas the standalone API deliberately exposes the full orbit.
+    """
+
+    knot = GeneralizedAlgebraicKnot.torus_knot(2, 5)
+    source = Character(
+        BranchedCoverHomology(knot, 4),
+        [[[QQ(1) / 5]]],
+    )
+
+    orbit = source.outer_torus_pattern_phase_orbit()
+
+    assert orbit.cover_degree == 4
+    assert orbit.orbit_length == 4
+    assert orbit.deck_powers == (0, 1, 2, 3)
+    assert orbit.distinguished_element_coordinates == (-1,)
+    assert orbit.smith_coordinates == ((-1,), (-4,), (-1,), (1,))
+    assert orbit.phase_arguments == (
+        QQ(4) / 5,
+        QQ(1) / 5,
+        QQ(4) / 5,
+        QQ(1) / 5,
+    )
+
+
+def test_general_phase_orbit_keeps_free_smith_coordinates_auditable():
+    r"""A torsion character vanishes on free homology without hiding it.
+
+    The six-fold branched cover of the trefoil has two free Smith summands in
+    the companion-matrix presentation.  The phase orbit records their
+    coordinate vectors, but their only admissible torsion-character values
+    are zero, so every evaluated phase is exactly zero.
+    """
+
+    orbit = torus_pattern_phase_orbit(
+        2,
+        3,
+        6,
+        [0, 0],
+        orbit_length=2,
+    )
+
+    assert orbit.smith_factors == (0, 0)
+    assert len(orbit.smith_coordinates) == 2
+    assert all(len(vector) == 2 for vector in orbit.smith_coordinates)
+    assert orbit.phase_arguments == (0, 0)
+
+
+@pytest.mark.parametrize(
+    "p, q, cover_degree, generator_values, error_type, message",
+    [
+        (True, 5, 4, [0], TypeError, "p must be an integer"),
+        (2, 4, 4, [0], ValueError, "relatively prime"),
+        (2, 5, 1, [0], ValueError, "greater than one"),
+        (2, 5, 4, [], ValueError, "one entry per nontrivial Smith factor"),
+        (2, 5, 4, [0.2], TypeError, "exact rational number"),
+        (2, 5, 4, [QQ(1) / 3], ValueError, "Smith factor 5"),
+        (
+            2,
+            3,
+            6,
+            [QQ(1) / 2, 0],
+            ValueError,
+            "torsion-free Smith summand",
+        ),
+    ],
+)
+def test_general_phase_orbit_rejects_incompatible_public_data(
+    p,
+    q,
+    cover_degree,
+    generator_values,
+    error_type,
+    message,
+):
+    r"""Reject inputs that cannot define a character on the pattern cover.
+
+    These cases distinguish topological incompatibility--for example a
+    ``1/3`` value on ``Z/5``--from inexact numeric input and malformed cover
+    metadata.  In particular, a free Smith coordinate is not silently dropped:
+    it is accepted only with the zero extension required by ``Character``.
+    """
+
+    with pytest.raises(error_type, match=message):
+        torus_pattern_phase_orbit(
+            p,
+            q,
+            cover_degree,
+            generator_values,
+        )
+
+
+def test_phase_orbit_record_is_frozen_and_checks_its_displayed_evaluation():
+    """The diagnostic coordinates and their evaluated phases cannot diverge."""
+
+    orbit = torus_pattern_phase_orbit(2, 5, 4, [QQ(1) / 5])
+
+    with pytest.raises(FrozenInstanceError):
+        orbit.phase_arguments = (0, 0, 0, 0)
+    with pytest.raises(ValueError, match="do not evaluate"):
+        TorusPatternPhaseOrbit(
+            p=orbit.p,
+            q=orbit.q,
+            cover_degree=orbit.cover_degree,
+            orbit_length=orbit.orbit_length,
+            smith_factors=orbit.smith_factors,
+            generator_values=orbit.generator_values,
+            smith_coordinates=orbit.smith_coordinates,
+            phase_arguments=(0, 0, 0, 0),
+        )
+
+
+@pytest.mark.parametrize(
+    "orbit_length, error_type, message",
+    [
+        (True, TypeError, "orbit_length must be an integer"),
+        (0, ValueError, "between one and cover_degree"),
+        (5, ValueError, "between one and cover_degree"),
+    ],
+)
+def test_outer_pattern_phase_api_rejects_invalid_orbit_lengths(
+    orbit_length,
+    error_type,
+    message,
+):
+    """A requested initial orbit segment must be meaningful in the cover."""
+
+    knot = GeneralizedAlgebraicKnot.torus_knot(2, 5)
+    source = Character(
+        BranchedCoverHomology(knot, 4),
+        [[[QQ(1) / 5]]],
+    )
+
+    with pytest.raises(error_type, match=message):
+        source.outer_torus_pattern_phase_orbit(
+            orbit_length=orbit_length,
+        )
 
 
 def test_deeper_copy_indices_are_grouped_in_contiguous_lexicographic_blocks():
