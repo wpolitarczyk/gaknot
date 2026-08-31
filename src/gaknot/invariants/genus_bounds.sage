@@ -35,6 +35,7 @@ invariant values.
 from dataclasses import dataclass
 from itertools import product
 from math import gcd as integer_gcd
+import os
 
 from sage.all import GF, Integer, QQ, is_prime, matrix
 
@@ -45,6 +46,70 @@ from gaknot.invariants.casson_gordon import casson_gordon_invariant
 def _is_integer(value):
     """Return whether ``value`` is an integer but not a Python boolean."""
     return not isinstance(value, bool) and isinstance(value, (int, Integer))
+
+
+class _GilmerComputationLog:
+    r"""Optional deterministic text sink for a complete obstruction search.
+
+    The class deliberately avoids Python's process-global ``logging`` state.
+    A notebook or library caller receives one self-contained UTF-8 file, and
+    calls that do not request a path execute the same search through a no-op
+    sink.  Lines are written as the search proceeds, so theorem-sized logs do
+    not have to be retained in memory.
+
+    In the terminology of Marchwicka--Politarczyk, the computer calculation
+    enumerates projective isotropic elements, not metabolizers.  A
+    hypothetical nonzero primary metabolizer must contain one of those lines,
+    which is why checking all lines suffices.  The log states this distinction
+    explicitly instead of perpetuating the legacy program's informal use of
+    the word ``metabolizer`` for an isotropic vector.
+    """
+
+    def __init__(self, path, mode):
+        if mode not in {"w", "a"}:
+            raise ValueError("log_mode must be either 'w' or 'a'.")
+        if path is None:
+            normalized_path = None
+        else:
+            if not isinstance(path, (str, os.PathLike)):
+                raise TypeError("log_path must be a string or path-like object.")
+            normalized_path = os.fspath(path)
+            if not isinstance(normalized_path, str):
+                raise TypeError("log_path must resolve to a text path.")
+            if not normalized_path.strip():
+                raise ValueError("log_path must not be empty.")
+
+        self.path = normalized_path
+        self.mode = mode
+        self._stream = None
+
+    @property
+    def enabled(self):
+        """Return whether this sink writes to a file."""
+
+        return self.path is not None
+
+    def __enter__(self):
+        if self.enabled:
+            self._stream = open(
+                self.path,
+                self.mode,
+                encoding="utf-8",
+                newline="\n",
+            )
+        return self
+
+    def __exit__(self, exception_type, exception, traceback):
+        if self._stream is not None:
+            self._stream.close()
+            self._stream = None
+        return False
+
+    def write(self, line=""):
+        """Write one already formatted line when logging is enabled."""
+
+        if self._stream is not None:
+            self._stream.write(f"{line}\n")
 
 
 class PrimeDiagonalLinkingForm:
@@ -358,11 +423,23 @@ class GenusObstructionResult:
         )
 
 
-def _scaled_component_signature_tables(knot, prime, component_indices):
-    """Precompute ``prime*sigma`` as Python integers for the inner search."""
+def _scaled_component_signature_tables(
+    knot,
+    prime,
+    component_indices,
+    computation_log,
+):
+    r"""Precompute and optionally log ``prime*sigma`` lookup tables.
+
+    The optimized inner loop uses integral values ``prime*sigma``.  Recording
+    the complete tables makes the exact Casson--Gordon input to every later
+    sum independently auditable without expanding the same cable formula for
+    every isotropic line.
+    """
     tables = {}
     prime_as_int = int(prime)
 
+    computation_log.write("SIGNATURE_LOOKUP_TABLES_BEGIN")
     for component_index in component_indices:
         component = knot[component_index]
         table = []
@@ -375,7 +452,15 @@ def _scaled_component_signature_tables(knot, prime, component_indices):
                     f"denominator {prime}."
                 )
             table.append(int(scaled_sigma))
+            computation_log.write(
+                "  TABLE_ENTRY "
+                f"component={component_index} "
+                f"parameter={parameter} "
+                f"sigma={sigma} "
+                f"scaled_sigma={int(scaled_sigma)}"
+            )
         tables[component_index] = tuple(table)
+    computation_log.write("SIGNATURE_LOOKUP_TABLES_END")
 
     return tables
 
@@ -408,13 +493,27 @@ def _check_primary_part(
     prime,
     genus,
     classical_signature,
+    computation_log,
 ):
-    """Run the projective isotropic-line search for one prime."""
+    r"""Run and optionally log the projective isotropic-line search."""
     component_indices = linking_form.primary_indices(prime)
     generator_count = len(component_indices)
     eligible = generator_count > 2 * genus
 
+    computation_log.write()
+    computation_log.write(f"PRIMARY_PART_BEGIN prime={int(prime)}")
+    computation_log.write(f"component_indices={component_indices}")
+    computation_log.write(f"generator_count={generator_count}")
+    computation_log.write(
+        f"eligibility_test={generator_count} > 2*{int(genus)}"
+    )
+    computation_log.write(f"eligible={eligible}")
+
     if not eligible:
+        computation_log.write(
+            "PRIMARY_PART_RESULT certified=False reason=rank_ineligible"
+        )
+        computation_log.write(f"PRIMARY_PART_END prime={int(prime)}")
         return PrimaryGenusCheck(
             prime=prime,
             component_indices=component_indices,
@@ -430,6 +529,7 @@ def _check_primary_part(
         knot,
         prime,
         component_indices,
+        computation_log,
     )
     isotropic_lines_examined = 0
     violating_lines = 0
@@ -443,6 +543,16 @@ def _check_primary_part(
     projective_vectors_in_search_space = sum(
         prime_as_int ** exponent for exponent in range(generator_count)
     )
+    computation_log.write(
+        "projective_vectors_in_search_space="
+        f"{projective_vectors_in_search_space}"
+    )
+    computation_log.write(
+        "MULTIPLIER_NOTE Only k=1,...,(p-1)/2 are evaluated because "
+        "k and p-k simultaneously conjugate all character values and give "
+        "the same Casson--Gordon signature."
+    )
+    computation_log.write("ISOTROPIC_LINE_SEARCH_BEGIN")
 
     for isotropic_element in linking_form.projective_isotropic_elements(prime):
         isotropic_lines_examined += 1
@@ -456,6 +566,23 @@ def _check_primary_part(
         bound = eta + 4 * genus + 1
         scaled_bound = prime_as_int * int(bound)
         line_witness = None
+
+        if computation_log.enabled:
+            self_pairing = linking_form.pairing(
+                isotropic_element,
+                isotropic_element,
+            )
+            computation_log.write(
+                "ISOTROPIC_LINE_BEGIN "
+                f"index={isotropic_lines_examined} "
+                f"canonical_element={isotropic_element} "
+                f"self_pairing={self_pairing}"
+            )
+            computation_log.write(
+                f"  nonzero_primary_coordinates={nonzero_count} "
+                f"eta={eta} gilmer_bound={bound} "
+                f"scaled_bound={scaled_bound}"
+            )
 
         # Multipliers k and p-k negate every character parameter.  The
         # Casson--Gordon formula is unchanged by this simultaneous conjugation,
@@ -474,10 +601,41 @@ def _check_primary_part(
             scaled_left_hand_side = abs(
                 scaled_sigma + prime_as_int * int(classical_signature)
             )
+            violates = scaled_left_hand_side > scaled_bound
 
-            if scaled_left_hand_side > scaled_bound:
+            # Formatting a complete audit line is intentionally conditional.
+            # With no log requested, preserve the optimized search's original
+            # cost and construct exact rationals only for an actual witness.
+            if computation_log.enabled:
+                scaled_component_contributions = tuple(
+                    (
+                        index,
+                        signature_tables[index][
+                            int(character_parameters[index])
+                        ],
+                    )
+                    for index in component_indices
+                )
                 sigma = QQ(scaled_sigma) / prime
                 left_hand_side = QQ(scaled_left_hand_side) / prime
+                computation_log.write(
+                    "  MULTIPLE "
+                    f"k={multiple} "
+                    f"character_parameters={character_parameters} "
+                    "scaled_component_sigmas="
+                    f"{scaled_component_contributions} "
+                    f"scaled_sigma={scaled_sigma} "
+                    f"sigma={sigma} "
+                    f"eta={eta} "
+                    f"left_hand_side={left_hand_side} "
+                    f"bound={bound} "
+                    f"violates={violates}"
+                )
+
+            if violates:
+                if not computation_log.enabled:
+                    sigma = QQ(scaled_sigma) / prime
+                    left_hand_side = QQ(scaled_left_hand_side) / prime
                 line_witness = GilmerViolationWitness(
                     prime=prime,
                     isotropic_element=isotropic_element,
@@ -492,6 +650,18 @@ def _check_primary_part(
                 break
 
         if line_witness is None:
+            computation_log.write(
+                "ISOTROPIC_LINE_RESULT violation_found=False"
+            )
+            computation_log.write("ISOTROPIC_LINE_END")
+            computation_log.write("ISOTROPIC_LINE_SEARCH_END")
+            computation_log.write(
+                "PRIMARY_PART_RESULT certified=False "
+                f"isotropic_lines_examined={isotropic_lines_examined} "
+                f"violating_lines={violating_lines} "
+                f"unresolved_element={isotropic_element}"
+            )
+            computation_log.write(f"PRIMARY_PART_END prime={int(prime)}")
             return PrimaryGenusCheck(
                 prime=prime,
                 component_indices=component_indices,
@@ -508,12 +678,27 @@ def _check_primary_part(
             )
 
         violating_lines += 1
+        computation_log.write(
+            "ISOTROPIC_LINE_RESULT violation_found=True "
+            f"witness_multiple={int(line_witness.multiple)} "
+            f"witness_sigma={line_witness.sigma} "
+            f"witness_left_hand_side={line_witness.left_hand_side} "
+            f"witness_bound={line_witness.bound}"
+        )
+        computation_log.write("ISOTROPIC_LINE_END")
         if sample_witness is None:
             sample_witness = line_witness
 
     # An eligible anisotropic block also certifies the obstruction: a nonzero
     # metabolic primary summand would supply a nonzero isotropic metabolizer
     # element, but none exists.
+    computation_log.write("ISOTROPIC_LINE_SEARCH_END")
+    computation_log.write(
+        "PRIMARY_PART_RESULT certified=True "
+        f"isotropic_lines_examined={isotropic_lines_examined} "
+        f"violating_lines={violating_lines}"
+    )
+    computation_log.write(f"PRIMARY_PART_END prime={int(prime)}")
     return PrimaryGenusCheck(
         prime=prime,
         component_indices=component_indices,
@@ -527,7 +712,13 @@ def _check_primary_part(
     )
 
 
-def gilmer_genus_obstruction(knot, genus):
+def gilmer_genus_obstruction(
+    knot,
+    genus,
+    *,
+    log_path=None,
+    log_mode="w",
+):
     r"""Try to certify ``g_4^top(knot) > genus`` using Gilmer's bound.
 
     The search is complete for the sufficient primary-isotropic criterion used
@@ -537,11 +728,28 @@ def gilmer_genus_obstruction(knot, genus):
     Args:
         knot: A GA-knot supported by ``casson_gordon_invariant``.
         genus: A nonnegative integer genus whose existence is to be obstructed.
+        log_path: Optional string or path-like destination for a deterministic
+            UTF-8 audit log.  When supplied, the log records the linking form,
+            signature lookup tables, every canonical isotropic line, every
+            scalar multiple tested before the algorithm stops on that line,
+            all character parameters and exact inequality values, and the
+            per-primary and global conclusions.
+        log_mode: ``"w"`` replaces the destination and ``"a"`` appends a new
+            complete run.  It is validated even when logging is disabled.
 
     Returns:
         A ``GenusObstructionResult``.  Its ``certified`` flag is true exactly
         when at least one eligible primary part proves the requested strict
         lower bound.
+
+    Logging terminology:
+        The paper's Algorithm 1 and this implementation enumerate nonzero
+        isotropic elements modulo scalar multiplication.  They do not
+        enumerate all metabolizer subspaces.  This is sufficient because any
+        nonzero primary metabolizer contains one of the logged isotropic
+        lines.  The log begins with this explanation so that its entries are
+        not mistaken for a list of metabolizers, as happened informally in
+        the legacy implementation.
     """
     if not isinstance(knot, GeneralizedAlgebraicKnot):
         raise TypeError(
@@ -554,24 +762,68 @@ def gilmer_genus_obstruction(knot, genus):
         raise ValueError("The tested genus must be nonnegative.")
     genus = Integer(genus)
 
-    linking_form = PrimeDiagonalLinkingForm.from_knot(knot)
-    classical_signature = Integer(knot.signature()(QQ(1) / 2))
-    primary_checks = tuple(
-        _check_primary_part(
-            knot,
-            linking_form,
-            prime,
-            genus,
-            classical_signature,
-        )
-        for prime in linking_form.primary_primes
-    )
-    certified = any(check.certified for check in primary_checks)
+    with _GilmerComputationLog(log_path, log_mode) as computation_log:
+        linking_form = PrimeDiagonalLinkingForm.from_knot(knot)
+        classical_signature = Integer(knot.signature()(QQ(1) / 2))
 
-    return GenusObstructionResult(
-        tested_genus=genus,
-        classical_signature=classical_signature,
-        linking_form=linking_form,
-        primary_checks=primary_checks,
-        certified=certified,
-    )
+        computation_log.write(
+            "GAKNOT GILMER GENUS-OBSTRUCTION COMPUTATION LOG"
+        )
+        computation_log.write(
+            "Reference: Marchwicka--Politarczyk, Theorem 2.9, "
+            "Lemma 3.1, and Algorithm 1."
+        )
+        computation_log.write(f"knot={knot}")
+        computation_log.write(f"knot_description={knot.description}")
+        computation_log.write(f"tested_genus={int(genus)}")
+        computation_log.write(f"classical_signature={classical_signature}")
+        computation_log.write(
+            f"linking_form_orders={linking_form.orders}"
+        )
+        computation_log.write(
+            f"linking_form_coefficients={linking_form.coefficients}"
+        )
+        computation_log.write(
+            f"primary_primes={linking_form.primary_primes}"
+        )
+        computation_log.write()
+        computation_log.write("METABOLIZER_INTERPRETATION")
+        computation_log.write(
+            "The search enumerates canonical projective isotropic lines, "
+            "not complete metabolizer subspaces."
+        )
+        computation_log.write(
+            "Every nonzero primary metabolizer contains a nonzero isotropic "
+            "element, hence one logged line; proving a violation on every "
+            "line rules out the metabolizer required by Gilmer's theorem."
+        )
+
+        primary_checks = tuple(
+            _check_primary_part(
+                knot,
+                linking_form,
+                prime,
+                genus,
+                classical_signature,
+                computation_log,
+            )
+            for prime in linking_form.primary_primes
+        )
+        certified = any(check.certified for check in primary_checks)
+
+        result = GenusObstructionResult(
+            tested_genus=genus,
+            classical_signature=classical_signature,
+            linking_form=linking_form,
+            primary_checks=primary_checks,
+            certified=certified,
+        )
+        computation_log.write()
+        computation_log.write("GLOBAL_RESULT")
+        computation_log.write(f"certified={result.certified}")
+        computation_log.write(f"lower_bound={result.lower_bound}")
+        computation_log.write(
+            f"successful_primes={result.successful_primes}"
+        )
+        computation_log.write("END OF COMPUTATION LOG")
+        return result

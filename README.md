@@ -453,6 +453,26 @@ check retains the first isotropic line for which no violating multiple was
 found. `PrimeDiagonalLinkingForm` also exposes exact pairing, isotropy, and
 metabolizer checks for the supported prime-cyclic forms.
 
+For a complete audit trail, supply a text-file destination. The optional log
+records the exact signature lookup tables, every canonical projective
+isotropic line, and every scalar multiple actually tested before the search
+finds a violation or becomes inconclusive:
+
+```python
+logged_test = cable.gilmer_genus_obstruction(
+    0,
+    log_path="computation_logs/gilmer-search.txt",
+)
+```
+
+The destination's parent directory must already exist. By default the file is
+replaced; pass `log_mode="a"` to append another complete run. The paper's
+algorithm enumerates isotropic lines rather than metabolizer subspaces. This
+is sufficient because every nonzero primary metabolizer contains such a line,
+and the log states that distinction explicitly. The ignored
+`computation_logs/` directory is a convenient location for potentially large
+local audit files.
+
 The regression suite reconstructs the eight-summand knot from Theorem 1.1 of
 the cited paper. It verifies all 7,056 isotropic lines in the `83`-primary
 part and all 10,816 lines in the `103`-primary part, certifying the lower bound

@@ -236,15 +236,29 @@ class GeneralizedAlgebraicKnot:
         from gaknot.invariants.casson_gordon import casson_gordon_invariant
         return casson_gordon_invariant(self, character_parameters)
 
-    def gilmer_genus_obstruction(self, genus):
+    def gilmer_genus_obstruction(
+        self,
+        genus,
+        *,
+        log_path=None,
+        log_mode="w",
+    ):
         r"""Try to certify that the topological four-genus exceeds ``genus``.
 
         This method applies the primary-isotropic Casson--Gordon search used
         for the supported ``(2,q)``-cable family.  An inconclusive result is
-        not a claim that a surface of the tested genus exists.
+        not a claim that a surface of the tested genus exists.  If ``log_path``
+        is supplied, every calculation actually performed by the optimized
+        search is streamed to that UTF-8 text file.  ``log_mode`` may be
+        ``"w"`` (replace) or ``"a"`` (append).
         """
         from gaknot.invariants.genus_bounds import gilmer_genus_obstruction
-        return gilmer_genus_obstruction(self, genus)
+        return gilmer_genus_obstruction(
+            self,
+            genus,
+            log_path=log_path,
+            log_mode=log_mode,
+        )
 
     def alexander_polynomial(self):
         """Return the normalized Alexander polynomial over ``ZZ[t]``.

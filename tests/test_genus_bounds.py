@@ -265,6 +265,89 @@ def test_prime_diagonal_linking_form_element_validation(
 # Structured genus-obstruction results
 # ---------------------------------------------------------------------------
 
+def test_gilmer_search_can_stream_a_complete_text_audit(tmp_path):
+    r"""Log every calculation performed before an inconclusive line stops it.
+
+    The split form of ``T(2,5) # -T(2,5)`` has the canonical isotropic line
+    ``(1,1)``.  Its Casson--Gordon contributions cancel for both multipliers
+    retained after conjugation symmetry, so the search tests ``k=1`` and
+    ``k=2`` and then stops inconclusively.  This tiny example is large enough
+    to verify every category in the exhaustive log without creating the
+    theorem-sized file used by the tutorial notebook.
+    """
+    cinquefoil = GeneralizedAlgebraicKnot.torus_knot(2, 5)
+    slice_knot = cinquefoil - cinquefoil
+    log_path = tmp_path / "gilmer-search.txt"
+
+    result = slice_knot.gilmer_genus_obstruction(
+        0,
+        log_path=log_path,
+    )
+    log_text = log_path.read_text(encoding="utf-8")
+
+    assert not result.certified
+    assert "GAKNOT GILMER GENUS-OBSTRUCTION COMPUTATION LOG" in log_text
+    assert f"knot={slice_knot}" in log_text
+    assert "tested_genus=0" in log_text
+    assert "linking_form_orders=(5, 5)" in log_text
+    assert "linking_form_coefficients=(-1, 1)" in log_text
+    assert "METABOLIZER_INTERPRETATION" in log_text
+    assert "not complete metabolizer subspaces" in log_text
+
+    # All five character parameters for both signed components are cached and
+    # written before the projective search begins: 2 components * 5 values.
+    assert log_text.count("TABLE_ENTRY") == 10
+    assert "ISOTROPIC_LINE_BEGIN index=1 canonical_element=(1, 1)" in log_text
+    assert "self_pairing=0" in log_text
+    assert "MULTIPLE k=1 character_parameters=(4, 1)" in log_text
+    assert "MULTIPLE k=2 character_parameters=(3, 2)" in log_text
+    assert log_text.count("  MULTIPLE ") == 2
+    assert "ISOTROPIC_LINE_RESULT violation_found=False" in log_text
+    assert "unresolved_element=(1, 1)" in log_text
+    assert "GLOBAL_RESULT\ncertified=False\nlower_bound=None" in log_text
+    assert log_text.endswith("END OF COMPUTATION LOG\n")
+
+
+def test_gilmer_log_append_mode_preserves_previous_run(tmp_path):
+    """Allow several reproducible searches to share one requested text file."""
+    knot = GeneralizedAlgebraicKnot.torus_knot(2, 5)
+    log_path = tmp_path / "several-searches.txt"
+
+    gilmer_genus_obstruction(knot, 0, log_path=log_path)
+    gilmer_genus_obstruction(
+        knot,
+        1,
+        log_path=log_path,
+        log_mode="a",
+    )
+
+    log_text = log_path.read_text(encoding="utf-8")
+    assert log_text.count(
+        "GAKNOT GILMER GENUS-OBSTRUCTION COMPUTATION LOG"
+    ) == 2
+    assert "tested_genus=0" in log_text
+    assert "tested_genus=1" in log_text
+
+
+@pytest.mark.parametrize(
+    "keyword_arguments, error_type, match",
+    [
+        ({"log_path": 7}, TypeError, "string or path-like"),
+        ({"log_path": ""}, ValueError, "must not be empty"),
+        ({"log_mode": "replace"}, ValueError, "either 'w' or 'a'"),
+    ],
+)
+def test_gilmer_log_options_are_validated(
+    keyword_arguments,
+    error_type,
+    match,
+):
+    """Reject ambiguous destinations and modes before starting the search."""
+    knot = GeneralizedAlgebraicKnot.torus_knot(2, 5)
+
+    with pytest.raises(error_type, match=match):
+        knot.gilmer_genus_obstruction(0, **keyword_arguments)
+
 def test_slice_connected_sum_is_reported_as_inconclusive():
     """Do not turn failure of this sufficient criterion into a genus claim.
 

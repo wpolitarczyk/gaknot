@@ -18,3 +18,4 @@ build/
 *.egg-info/
 .pytest_cache/
 /materials/
+/computation_logs/
