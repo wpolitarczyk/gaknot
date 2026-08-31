@@ -40,6 +40,13 @@ class BranchedCoverHomology:
     3. Each layer records one list of cyclic factors and the number of copies
        of that list contributed by the satellite formula.
 
+    Repeated-copy order is lexicographic in the successive satellite splits.
+    An index introduced at an outer layer varies slowest, while indices from
+    deeper layers vary fastest.  Thus, after an outer split into ``h`` copies,
+    every deeper layer consists of ``h`` contiguous blocks, one for each
+    translate ``t_Q^(i-1) iota_n`` in BCP-II, equation (4.18).  Characters use
+    this convention when transporting restrictions to companion covers.
+
     The sign of a knot component does not change its abstract first homology,
     but is retained in the decomposition and string representation so that a
     factor can still be traced back to the signed knot description.
@@ -230,7 +237,12 @@ class BranchedCoverHomology:
             layers.append(layer_data)
                 
             # Move to the companion term in the satellite formula.  Every copy
-            # already present splits into d companion contributions.
+            # already present splits into d companion contributions.  The
+            # implicit order is lexicographic: existing outer-copy indices
+            # vary slowest and this newly introduced inner index varies
+            # fastest.  Only the product is needed to record the identical
+            # factor lists, while character transport later restores the
+            # corresponding contiguous copy blocks.
             d = gcd(current_N, p)
             current_N = current_N // d
             multiplier = multiplier * d

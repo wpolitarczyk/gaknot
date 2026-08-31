@@ -219,6 +219,25 @@ class Character:
             
         return layer_values
 
+    def induced_companion_characters(self, component_index=0):
+        r"""Return the ``h`` characters in Theorem 4.19's nondivisible branch.
+
+        For the selected component, let ``n`` be this character's cover
+        degree, let ``w`` be its outer winding, and put ``h=gcd(n,w)``.  This
+        method restricts the character to the ``h`` structurally recorded
+        copies of ``H_1(Sigma_(n/h)(K))`` belonging to the inner companion.
+
+        The returned diagnostic record is iterable and retains the exact
+        cover, winding, companion, and deck-copy ordering.  The implementation
+        is imported lazily to keep ordinary character evaluation independent
+        of the satellite-transport machinery.
+        """
+
+        from gaknot.invariants.character_transport import (
+            induced_companion_characters,
+        )
+        return induced_companion_characters(self, component_index)
+
 
     # ------------------------------------------------------------------
     # Derived invariants and small structural helpers

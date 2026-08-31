@@ -193,6 +193,40 @@ The twisted Alexander calculation is currently restricted to positive,
 single-summand torus knots, and the character must be defined on the
 `p`-fold cover of `T(p,q)`.
 
+### Induced characters on a satellite companion
+
+For the nondivisible branch of BCP-II, Theorem 4.19, put
+`h = gcd(n,w)`, where `n` is the satellite-cover degree and `w` is the outer
+winding number. The satellite character restricts to `h` characters on the
+`n/h`-fold cover of the inner companion. The structural homology decomposition
+records those deck-translated copies, and the transport API restores them in
+the theorem's order:
+
+```python
+# Here n=4, w=2, h=2, and the companion cover has degree two.
+cable = GeneralizedAlgebraicKnot.iterated_torus_knot(
+    [(2, 3), (2, 5)]
+)
+four_cover = BranchedCoverHomology(cable, 4)
+four_cover_character = Character(
+    four_cover,
+    [[[0], [QQ(1) / 3, QQ(2) / 3]]],
+)
+
+transport = four_cover_character.induced_companion_characters()
+
+print(transport.h)                   # 2
+print(transport.lower_cover_degree)  # 2
+print([chi.values for chi in transport])  # [[1/3], [2/3]]
+```
+
+Entry `j` of the returned record is the paper's character `chi_(j+1)`, namely
+the restriction to `t_Q^j iota_n(H_1(Sigma_(n/h)(K)))`. Copy order is
+lexicographic across successive cabling layers, so the same operation also
+handles a companion with several deeper satellite layers. This transport does
+not yet calculate the separate phase values
+`chi_i(q_Q(mu_Q^(-w) eta))` used to reparametrize the companion signatures.
+
 ### Metabelian signature jumps of common-`p` iterated torus knots
 
 The first end-to-end twisted-signature interface supports one positive

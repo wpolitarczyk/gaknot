@@ -1,6 +1,10 @@
 from .core.gaknot import GeneralizedAlgebraicKnot
 from .invariants.H1_branched_cover import BranchedCoverHomology
 from .invariants.character import Character
+from .invariants.character_transport import (
+    InducedCompanionCharacters,
+    induced_companion_characters,
+)
 from .invariants.signature import SignatureFunction, SignaturePloter
 from .invariants.casson_gordon import (
     CassonGordonInvariant,
@@ -55,6 +59,8 @@ __all__ = [
     'GeneralizedAlgebraicKnot',
     'BranchedCoverHomology',
     'Character',
+    'InducedCompanionCharacters',
+    'induced_companion_characters',
     'SignatureFunction',
     'SignaturePloter',
     'CassonGordonInvariant',
