@@ -69,7 +69,14 @@ from .invariants.ckp import (
     zero_surgery_twisted_alexander_torus_knot,
 )
 
+# Keep a lightweight public version string available even when the package is
+# imported directly from ``src/`` rather than installed through packaging
+# metadata.  ``tests/test_version.py`` verifies that this value stays aligned
+# with the version declared in ``pyproject.toml``.
+__version__ = '1.0.0'
+
 __all__ = [
+    '__version__',
     'GeneralizedAlgebraicKnot',
     'BranchedCoverHomology',
     'Character',

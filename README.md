@@ -74,6 +74,7 @@ gaknot/
 |-- benchmarks/        # Performance measurements, separate from tests
 |-- environment.yml    # Recommended Conda environment
 |-- pyproject.toml     # Package and dependency metadata
+|-- CHANGELOG.md       # Release notes and documented scope boundaries
 `-- Makefile           # Build, installation, test, and cleanup commands
 ```
 
@@ -602,6 +603,43 @@ also be a pytest node id, for example
 `tests/test_character.py::test_character_values_are_defensively_copied`, when
 only one test function should run.
 
+## Citing `gaknot`
+
+If `gaknot` is used to obtain or verify calculations reported in a
+mathematical paper, please cite the software itself. A suggested citation is:
+
+> Wojciech Politarczyk and Maria Marchwicka, *gaknot: Generalized Algebraic
+> Knot Invariants*, SageMath software package, version 1.0.0,
+> [https://github.com/wpolitarczyk/gaknot](https://github.com/wpolitarczyk/gaknot),
+> accessed DATE.
+
+For BibTeX styles commonly used by mathematics journals, the corresponding
+entry may be written as follows:
+
+```bibtex
+@misc{gaknot,
+  author       = {Politarczyk, Wojciech and Marchwicka, Maria},
+  title        = {{gaknot}: Generalized Algebraic Knot Invariants},
+  howpublished = {SageMath software package},
+  year         = {2026},
+  note         = {Version 1.0.0; accessed DATE},
+  url          = {https://github.com/wpolitarczyk/gaknot}
+}
+```
+
+Replace `DATE` with the date on which the software was accessed. For
+reproducibility, please also identify the exact release tag or Git commit used
+when it differs from version 1.0.0. If an archival DOI is assigned in the
+future, the DOI should be included in place of, or alongside, the repository
+URL.
+
+The software citation does not replace citations to the mathematical results
+on which a calculation relies. Please also cite the relevant papers from the
+bibliography below--for example [MP23] for the supported Casson--Gordon and
+genus-obstruction calculations, [CKP23] for the explicit metabelian twisted
+Alexander calculations, or [BCP-I--III] and [Y26] for twisted Blanchfield and
+twisted-signature computations.
+
 ## Bibliography
 
 The following papers are the primary mathematical references for the
@@ -677,6 +715,7 @@ exhaustive bibliography of Casson--Gordon theory or knot signatures.
 The `.sage` source files contain detailed module and API docstrings. The most
 useful entry points are:
 
+- [release notes and scope boundaries](CHANGELOG.md);
 - [the executable tutorial notebooks](notebooks/README.md);
 - [`GeneralizedAlgebraicKnot`](src/gaknot/core/gaknot.sage);
 - [signature functions and plotting](src/gaknot/invariants/signature.sage);
