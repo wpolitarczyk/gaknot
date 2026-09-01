@@ -21,10 +21,16 @@ The package currently provides:
 - coverage-aware metabelian twisted signature jumps for positive common-`p`
   iterated torus knots.
 
-The project was created as part of the proof of the main lemma in
+The project originated as software supporting the proof of the main lemma in
 **"On the slice genus of generalized algebraic knots"** by Maria Marchwicka
 and Wojciech Politarczyk
-([arXiv:2107.11299](https://arxiv.org/abs/2107.11299)).
+([arXiv:2107.11299](https://arxiv.org/abs/2107.11299)). Since that initial
+application, the package has been substantially rebuilt and extended. It is
+now a broader computational framework for GA-knots, capable of calculations
+well beyond the original proof, including branched-cover character
+bookkeeping, Casson--Gordon signatures and nullities, automated four-genus
+obstruction searches, and metabelian twisted invariants for the supported
+families described below.
 
 ## Mathematical data model
 
